@@ -1,0 +1,1 @@
+{"root":["./src/domreplacement.ts","./src/index.ts","./src/vite-env.d.ts","./src/sw-proxy/fetchconversions.ts","./src/sw-proxy/fetcheventpolyfill.ts","./src/sw-proxy/index.test.ts","./src/sw-proxy/index.ts","./src/sw-proxy/sw-passthrough-api.ts"],"version":"5.8.3"}

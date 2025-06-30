@@ -1,0 +1,22 @@
+{
+  "name": "subdomain",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "watch": "vite build --watch & vite preview",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-inline-source": "github:zphrs/vite-plugin-inline-source#build"
+  },
+  "dependencies": {
+    "frame-glue": "link:../frame-glue",
+    "vite-plugin-pwa": "^1.0.0"
+  }
+}
