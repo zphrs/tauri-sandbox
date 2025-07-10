@@ -1,7 +1,4 @@
-use tokio::{
-    io::{self, AsyncWriteExt as _},
-    net::TcpStream,
-};
+use tokio::{io::AsyncWriteExt as _, net::TcpStream};
 
 use crate::addr::Addr;
 
@@ -9,9 +6,15 @@ use super::Error;
 
 struct Reply(u8);
 
+impl Reply {
+    pub fn from_error(err: &Error) -> Self {
+        Reply(err.to_u8())
+    }
+}
+
 impl From<Error> for Reply {
     fn from(value: Error) -> Self {
-        Self(value.into())
+        Self::from_error(&value)
     }
 }
 
@@ -27,9 +30,9 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn from_error(error: Error) -> Self {
+    pub fn from_error(error: &Error) -> Self {
         Self {
-            reply: error.into(),
+            reply: Reply::from_error(error),
             addr: Addr::Null,
         }
     }
@@ -39,21 +42,18 @@ impl Response {
             addr,
         }
     }
-    pub async fn to_stream(
-        &self,
-        stream: &mut TcpStream,
-    ) -> Result<(), io::Error> {
+    pub async fn to_stream(&self, stream: &mut TcpStream) -> Result<(), Error> {
         stream.write_u8(0x05).await?; // version
         stream.write_u8(self.reply.0).await?; // reply
-        stream.write_u8(0x00); // reserved
-        self.addr.to_stream(stream);
+        stream.write_u8(0x00).await?; // reserved
+        self.addr.to_stream(stream).await?; // addr
         Ok(())
     }
 }
 
 impl From<Error> for Response {
     fn from(value: Error) -> Self {
-        Self::from_error(value)
+        Self::from_error(&value)
     }
 }
 

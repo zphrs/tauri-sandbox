@@ -7,10 +7,10 @@ use super::cmd::Cmd;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("TCP Error {0}")]
+    #[error("TCP error {0}")]
     Io(#[from] io::Error),
-    #[error("error when parsing domain")]
-    InvalidDomain,
+    #[error("error when parsing domain {0}")]
+    InvalidDomain(String),
     #[error("invalid auth method")]
     InvalidAuth,
     #[error("version from client is not 5")]
@@ -29,16 +29,18 @@ pub enum Error {
     CmdNotSupported(Cmd),
     #[error("address type not supported")]
     AddressTypeNotSupported,
+    #[error("internal error: {0}")]
+    Internal(&'static str),
 }
 
 impl From<FromUtf8Error> for Error {
     fn from(_value: FromUtf8Error) -> Self {
-        Error::InvalidDomain
+        Error::InvalidDomain("<invalid-utf8>".to_string())
     }
 }
 
-impl Into<u8> for Error {
-    fn into(self) -> u8 {
+impl Error {
+    pub fn to_u8(&self) -> u8 {
         match self {
             Error::Io(_) => 0x01,
             Error::InvalidAuth => 0xFF,
@@ -50,7 +52,14 @@ impl Into<u8> for Error {
             Error::TtlExpired => 0x06,
             Error::CmdNotSupported(_) => 0x07,
             Error::AddressTypeNotSupported => 0x08,
-            Error::InvalidDomain => 0x01,
+            Error::InvalidDomain(_) => 0x01,
+            Error::Internal(_) => 0x01,
         }
+    }
+}
+
+impl From<Error> for u8 {
+    fn from(val: Error) -> u8 {
+        val.to_u8()
     }
 }

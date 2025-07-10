@@ -1,24 +1,42 @@
-use log::info;
+use std::net::SocketAddr;
+
+use log::{info, trace};
 use tokio::{
     io::{self, AsyncReadExt as _, AsyncWriteExt as _},
     net::{TcpListener, TcpStream},
+    task::JoinHandle,
 };
+
+use crate::{addr::Addr, request::Filter};
 
 use super::Error;
 use super::Request;
 
-pub struct Server {
+pub struct Server<'a> {
     listener: TcpListener,
-    tauri_port: u16,
+    filters: Vec<Box<Filter<'a>>>,
 }
 
-impl Server {
-    pub async fn new(tauri_port: u16) -> io::Result<Self> {
+#[derive(PartialEq, Eq)]
+pub enum FilterResult {
+    Allow,
+    Deny,
+}
+
+impl<'a> Server<'a> {
+    /// get_forwarding_server should return the address
+    pub async fn new() -> io::Result<Self> {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         Ok(Self {
+            filters: Vec::new(),
             listener,
-            tauri_port,
         })
+    }
+
+    pub fn addr(&self) -> SocketAddr {
+        self.listener
+            .local_addr()
+            .expect("listener to have an address")
     }
 
     pub fn port(&self) -> u16 {
@@ -29,22 +47,22 @@ impl Server {
         addr.port()
     }
 
-    pub async fn poll(&self) -> Result<(), Error> {
+    pub async fn poll(&self) -> Result<JoinHandle<()>, Error> {
         let Ok(stream) = self.listener.accept().await else {
-            info!("Connection failed.");
-            return Ok(());
+            info!("connection failed.");
+            return Err(Error::Internal("connection failed"));
         };
         self.accept(stream.0).await
     }
 
     pub async fn negotiate_auth(stream: &mut TcpStream) -> Result<(), Error> {
-        let mut ver_method_ct = [0u8, 0u8];
-        stream.read_exact(&mut ver_method_ct).await?;
-        let [_ver, method_count] = ver_method_ct;
-        let mut method_list = vec![0; method_count.into()];
+        let _ver = stream.read_u8().await?;
+        let method_ct = stream.read_u8().await?;
+        let mut method_list = vec![0u8; method_ct.into()];
         stream.read_exact(&mut method_list[..]).await?;
 
         let mut no_auth_found = false;
+        trace!("{} auths supported: {:02X?}", method_ct, method_list);
         for method in method_list {
             if method == 0x00 {
                 no_auth_found = true
@@ -62,11 +80,22 @@ impl Server {
         Ok(())
     }
 
-    pub async fn accept(&self, mut stream: TcpStream) -> Result<(), Error> {
+    /// By default all requests are passed through.
+    /// If any filter returns false then the request will be blocked.
+    pub fn add_filter<'b: 'a, F: Fn(&Addr) -> FilterResult + 'b>(
+        &mut self,
+        filter: F,
+    ) {
+        self.filters.push(Box::new(filter));
+    }
+
+    pub async fn accept(
+        &self,
+        mut stream: TcpStream,
+    ) -> Result<JoinHandle<()>, Error> {
         Self::negotiate_auth(&mut stream).await?;
 
-        let req = Request::from_stream(&mut stream, self.tauri_port).await?;
-        req.handle().await.to_stream(&mut stream).await?;
-        Ok(())
+        let req = Request::from_stream(&mut stream, &self.filters).await?;
+        req.handle(stream).await
     }
 }

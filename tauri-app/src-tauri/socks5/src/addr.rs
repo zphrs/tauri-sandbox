@@ -1,16 +1,33 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
+    net::{TcpStream, lookup_host},
 };
 
 use super::error::Error;
 
+#[derive(Debug, Clone)]
 pub enum Addr {
     Ip(IpAddr, u16),
     Domain(String, u16),
     Null,
+}
+
+impl TryFrom<Addr> for SocketAddr {
+    type Error = Error;
+
+    fn try_from(value: Addr) -> Result<Self, Self::Error> {
+        match value {
+            Addr::Ip(ip_addr, port) => Ok(SocketAddr::new(ip_addr, port)),
+            Addr::Domain(_, _) => Err(Error::Internal(
+                "tried to convert an addr of type domain to a SocketAddr. Call resolve_dns first before calling the type conversion",
+            )),
+            Addr::Null => Err(Error::Internal(
+                "tried to convert a null address to a SocketAddr.",
+            )),
+        }
+    }
 }
 
 impl Addr {
@@ -34,7 +51,7 @@ impl Addr {
         port: u16,
     ) -> Result<Self, Error> {
         if domain.len() > 253 {
-            return Err(Error::InvalidDomain);
+            return Err(Error::InvalidDomain(domain));
         };
         Ok(Self::Domain(domain, port))
     }
@@ -78,7 +95,7 @@ impl Addr {
         stream.read_exact(&mut domain_bytes).await?;
         let domain = String::from_utf8(domain_bytes)?;
         if domain.len() > 253 {
-            return Err(Error::InvalidDomain);
+            return Err(Error::InvalidDomain(domain));
         };
         let port = stream.read_u16().await?;
         Ok(Self::Domain(domain, port))
@@ -105,6 +122,19 @@ impl Addr {
         };
         stream.write_u16(port).await?;
         Ok(())
+    }
+
+    pub async fn resolve_dns(self) -> Result<Self, Error> {
+        match self {
+            Addr::Domain(domain, port) => {
+                let addr = lookup_host((domain.as_str(), port))
+                    .await?
+                    .next()
+                    .ok_or(Error::InvalidDomain(domain.clone()))?;
+                Ok(Self::from_ip_addr(addr.ip(), port))
+            }
+            _ => Ok(self),
+        }
     }
 
     async fn write_v6(
