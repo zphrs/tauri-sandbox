@@ -5,15 +5,6 @@
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
-      <PreActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Script"
-               scriptText = "# Type a script or drag a script file from your workspace to insert its path.&#10;export PATH=&quot;/opt/homebrew/bin/:$PATH&quot;&#10;">
-            </ActionContent>
-         </ExecutionAction>
-      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -89,11 +80,6 @@
          <EnvironmentVariable
             key = "RUST_LOG"
             value = "info"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "PATH"
-            value = "/opt/homebrew/bin/:$PATH"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

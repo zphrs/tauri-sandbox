@@ -12,6 +12,7 @@
 		5DCFDCE0989E0655641185BE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BA38F7BF7C28E04DBA849965 /* LaunchScreen.storyboard */; };
 		5DDC8F8949AE56AB4B683F62 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5384EE0C649F19A31B462538 /* QuartzCore.framework */; };
 		6495EEEF2DFC12CB82351B2B /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C42C09CE350D0304EDF85C59 /* UIKit.framework */; };
+		7093C78D46FFF923EC249AF8 /* libapp.a in Resources */ = {isa = PBXBuildFile; fileRef = 0E9B0214A2E6686750A9979E /* libapp.a */; };
 		7425A66C523CC66EFF87A16E /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 46600E42EDBD4E2F9CFFB94E /* libapp.a */; };
 		74C25A7912AFE30DBE96B590 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 234C7D371C7B526F7E893B15 /* assets */; };
 		7A50F9841502955D69915755 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8DBF813DB5FCB214283D94D /* MetalKit.framework */; };
@@ -22,6 +23,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0E9B0214A2E6686750A9979E /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		234C7D371C7B526F7E893B15 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		415CE9B61EE711FB11882F1B /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		46600E42EDBD4E2F9CFFB94E /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
@@ -64,6 +66,7 @@
 		2ECFA35AFF2D5945783C3B8D /* Externals */ = {
 			isa = PBXGroup;
 			children = (
+				85B4182209ABBF5B69BED744 /* arm64 */,
 			);
 			path = Externals;
 			sourceTree = "<group>";
@@ -92,6 +95,22 @@
 				415CE9B61EE711FB11882F1B /* bindings.h */,
 			);
 			path = bindings;
+			sourceTree = "<group>";
+		};
+		79B9EBA99EB870C794185462 /* debug */ = {
+			isa = PBXGroup;
+			children = (
+				0E9B0214A2E6686750A9979E /* libapp.a */,
+			);
+			path = debug;
+			sourceTree = "<group>";
+		};
+		85B4182209ABBF5B69BED744 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				79B9EBA99EB870C794185462 /* debug */,
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 		86E4D2974D6FC803E43026BD /* Frameworks */ = {
@@ -208,6 +227,7 @@
 				8A272DD02B0D36ACBCE73E26 /* Assets.xcassets in Resources */,
 				5DCFDCE0989E0655641185BE /* LaunchScreen.storyboard in Resources */,
 				74C25A7912AFE30DBE96B590 /* assets in Resources */,
+				7093C78D46FFF923EC249AF8 /* libapp.a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -233,7 +253,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
-			shellScript = "export PATH=\"/Users/zphrs/Library/pnpm/:/opt/homebrew/bin/:$PATH\" && pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}\n";
+			shellScript = "export PATH=\"$PATH:/opt/homebrew/bin/\"\npnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

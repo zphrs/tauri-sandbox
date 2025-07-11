@@ -1,22 +1,46 @@
-import { invoke } from "@tauri-apps/api/core";
+import "./style.css"
+import { createSandbox } from "./sandbox.ts"
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
+async function init(
+  appId: string = "exploits",
+  docId: string = "excalidraw"
+) {
+  let parent = document.querySelector<HTMLDivElement>("#app")!
+  let doc = await (await fetch(`/${appId}/index.html`)).text()
+  const { port1, port2 } = new MessageChannel()
+  const worker = new Worker(new URL("./proxy-sw/sw.ts", import.meta.url), {
+    type: "module",
+  })
 
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
+  const initDone = new Promise<void>(res => {
+    worker.addEventListener("message", e => {
+      console.log(e)
+      if (e.data == "proxy-sw init done") res()
+    })
+  })
+
+  worker.postMessage({ appId }, [port2])
+  await initDone
+  const { setPort } = await createSandbox(parent, port1, doc, docId)
+  const w = worker
+  window.addEventListener("message", async e => {
+    if (e.data != "iframe refresh port") return
+
+    const { port1, port2 } = new MessageChannel()
+    w.terminate()
+    const worker = new Worker(new URL("./proxy-sw/sw.ts", import.meta.url), {
+      type: "module",
+    })
+    const initDone = new Promise<void>(res => {
+      worker.addEventListener("message", e => {
+        console.log(e)
+        if (e.data == "proxy-sw init done") res()
+      })
+    })
+
+    worker.postMessage({ appId }, [port2])
+    await initDone
+    setPort(port1)
+  })
 }
-
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
-});
+init("exploits")

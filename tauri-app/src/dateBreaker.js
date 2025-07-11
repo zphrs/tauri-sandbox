@@ -1,0 +1,1 @@
+anyElement.innerHTML += "<iframe id=i></iframe>"; alert(i.contentWindow.Date());

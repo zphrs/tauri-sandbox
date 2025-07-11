@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- prevent a request for favicon -->
+  <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=" />
+  <!-- 
+      almost completely equivalent to an opaque origin; 
+      might want to remove csp since sw forwards all requests anyway
+      see https://github.com/w3c/ServiceWorker/issues/1026 for discussion on adding
+      ability to bypass sw fetch call
+    -->
+  <!-- <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src * 'unsafe-inline' 'unsafe-eval' data:; child-src 'none';"
+    /> -->
+  <!-- 
+        unfortunately have to restrict requests to 'self' thanks to 
+        https://github.com/w3c/webappsec-csp/issues/733 
+      -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; child-src 'none'; prefetch-src 'none'; frame-src 'none'; worker-src %VITE_SUBDOMAIN_WILDCARD_URL%/sw.js; font-src *;" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <title>Vite + TS</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script inline-source src="/src/main.ts"></script>
+</body>
+
+</html>

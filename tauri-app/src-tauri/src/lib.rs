@@ -1,18 +1,25 @@
-use tauri::{Manager, Url};
+use log::info;
+use tauri::Url;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
+    info!("HERE");
+
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run(socks_port: u16) {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info).build()
+        )
         .invoke_handler(tauri::generate_handler![greet])
         .plugin(tauri_plugin_opener::init())
         // .invoke_handler(tauri::generate_handler![greet])
-        .setup(|app| {
+        .setup(move |app| {
             let mut script_source = String::new();
             if std::env::consts::OS == "android" {
                 script_source += r"
@@ -52,14 +59,27 @@ pub fn run() {
             "#,
             )
             .as_str();
-            let _window = tauri::webview::WebviewWindowBuilder::new(
+            #[allow(unused_mut)]
+            let mut window_builder = tauri::webview::WebviewWindowBuilder::new(
                 app,
                 "label",
                 tauri::WebviewUrl::App("index.html".into()),
             )
             .initialization_script_for_all_frames(script_source)
-            .proxy_url(Url::parse("socks5://127.0.0.1:1080").unwrap())
-            .build()?;
+            .proxy_url(Url::parse(format!("socks5://127.0.0.1:{}", socks_port).as_str()).unwrap())
+            // default behavior; good to make explicit
+            .devtools(cfg!(debug_assertions));
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            {
+                window_builder = window_builder.allow_link_preview(false);
+            }
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::TitleBarStyle;
+
+                window_builder = window_builder.title_bar_style(TitleBarStyle::Transparent)
+            }
+            let _window = window_builder.build()?;
             Ok(())
         })
         .run(tauri::generate_context!())
