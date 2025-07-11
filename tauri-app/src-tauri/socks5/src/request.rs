@@ -40,9 +40,7 @@ impl<'a> Request<'a> {
     ) -> Result<JoinHandle<()>, (Error, TcpStream)> {
         match self.cmd {
             Cmd::Connect => (),
-            Cmd::UdpAssociate => {
-                
-            }
+            Cmd::UdpAssociate => {}
             cmd => {
                 return Err((Error::CmdNotSupported(cmd), stream));
             }
@@ -66,7 +64,7 @@ impl<'a> Request<'a> {
         stream: TcpStream,
     ) -> Result<JoinHandle<()>, Error> {
         match self.handle_inner(stream).await {
-            Ok(v) => return Ok(v),
+            Ok(v) => Ok(v),
             Err((e, mut stream)) => {
                 Response::from_error(&e).to_stream(&mut stream).await?;
                 Err(e)
