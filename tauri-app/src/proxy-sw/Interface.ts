@@ -1,3 +1,4 @@
 export type InitParams = {
-  appId: string
+  appId: string,
+  subdomainUrl: string
 }

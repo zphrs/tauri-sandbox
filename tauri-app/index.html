@@ -2,8 +2,8 @@
 <html lang="en">
 
 <head>
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src * 'unsafe-inline' 'unsafe-eval' data:; frame-src %VITE_SUBDOMAIN_WILDCARD_URL%/pg-doc-id/ isolation-ae63985c-01cc-43bd-8594-7a9f7b904df1://localhost; worker-src 'self'" />
+  <!-- <meta http-equiv="Content-Security-Policy"
+    content="default-src * 'unsafe-inline' 'unsafe-eval' data:; frame-src pg-doc:// isolation-ae63985c-01cc-43bd-8594-7a9f7b904df1://localhost; worker-src 'self'" /> -->
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,7 +12,7 @@
 
 <body>
   <div id="app"></div>
-  <script type="module" src="/src/main.ts"></script>
+  <script type="module" src="src/main.ts"></script>
 </body>
 
 </html>

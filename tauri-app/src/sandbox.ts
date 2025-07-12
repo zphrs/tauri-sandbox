@@ -1,6 +1,7 @@
 import { domReplacementParentSetup, localStorageParentSetup } from "frame-glue"
-import { SUBDOMAIN_WILDCARD_URL } from "./envs"
 import { getInitialIframeScript } from "./initialIframe"
+import { invoke } from "@tauri-apps/api/core"
+import { NONCE } from "./main"
 
 function composeDocument(html: string): Document {
   let doc = document.implementation.createHTMLDocument()
@@ -23,12 +24,14 @@ export async function createSandbox(
   index?: string,
   docId = "test"
 ) {
+  const url = await invoke<string>(`get_sandbox_url${NONCE}`);
+
   let iframe = document.createElement("iframe")
   let iframeScript = getInitialIframeScript(docId)
   let initialDoc = composeDocument(iframeScript.outerHTML)
 
-  iframe.src =
-    SUBDOMAIN_WILDCARD_URL + "/pg-doc-id/" + encodeURIComponent(docId)
+  iframe.src = `${url}/${encodeURIComponent(docId)}`
+
   iframe.sandbox.add("allow-scripts")
   iframe.sandbox.add("allow-same-origin")
   iframe.allow = "clipboard-write"

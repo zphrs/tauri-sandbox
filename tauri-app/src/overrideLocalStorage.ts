@@ -6,14 +6,14 @@ export async function overrideLocalStorage(docId: string) {
     port,
     initialStore,
   }: { port: MessagePort; initialStore: { [key: string]: string } } =
-    await new Promise(res => {
+    await new Promise(async res => {
       console.log("added msg event listener")
       window.addEventListener("message", ev => {
         console.log("HERE", ev.data)
         if (ev.data != "localStorageInit") return
         const port = ev.ports[0]
         console.log("port")
-        port.addEventListener("message", event => {
+        port.addEventListener("message", async event => {
           const msgData = event.data
           console.log(msgData)
           switch (msgData.call) {
@@ -22,7 +22,7 @@ export async function overrideLocalStorage(docId: string) {
               window.dispatchEvent(
                 new StorageEvent("storage", {
                   ...msgData,
-                  url: `${SUBDOMAIN_WILDCARD_URL.origin}/${docId}`,
+                  url: `${new URL(await SUBDOMAIN_WILDCARD_URL).origin}/${docId}`,
                   storageArea: window.localStorage,
                 })
               )

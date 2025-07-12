@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 let greetInputEl: HTMLInputElement | null;
 let greetMsgEl: HTMLElement | null;
 
-let nonce = crypto.randomUUID()
 
 
 async function greet() {
@@ -15,6 +14,7 @@ async function greet() {
   }
 }
 
+let nonce = crypto.randomUUID()
 window.addEventListener("DOMContentLoaded", async () => {
   // send nonce to isolation sandbox, wait 100ms to ensure that iframe loads in
   await new Promise(res => setTimeout(res, 100))
