@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "tauri-app"
+		},
+		{
+			"path": "tauri-app/src-tauri"
+		}
+	],
+	"settings": {}
+}

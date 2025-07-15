@@ -7,20 +7,21 @@
   "scripts": {
     "predev": "pnpm --filter ./frame-glue run build && pnpm --filter ./subdomain run build",
     "dev": "pnpm predev && (pnpm --filter ./subdomain run preview & vite dev --host)",
+    "prebuild": "pnpm --filter ./frame-glue run build && pnpm --filter ./subdomain run build",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "frame-glue": "link:frame-glue",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-log": "~2",
-    "@tauri-apps/plugin-opener": "^2"
+    "@tauri-apps/plugin-opener": "^2",
+    "frame-glue": "link:frame-glue"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
     "vite-plugin-mkcert": "^1.17.8",
-    "vite-plugin-pwa": "^0.21.1",
-    "@tauri-apps/cli": "^2"
+    "vite-plugin-pwa": "^0.21.1"
   }
 }

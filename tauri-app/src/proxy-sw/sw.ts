@@ -3,6 +3,8 @@
 import { handleProxiedFetchEvent } from "frame-glue"
 import type { InitParams } from "./Interface"
 
+
+
 const inited = false
 self.addEventListener("message", async (event: MessageEvent<InitParams>) => {
   console.log("proxy init")

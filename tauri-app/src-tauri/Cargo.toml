@@ -18,10 +18,10 @@
     tauri-build = { version = "2", features = ["isolation"] }
 
 [dependencies]
-    tauri = { version = "2", features = [
-        "isolation",
+    tauri = { version = "2", features = [ "isolation",
         "unstable",
         "macos-proxy",
+        "devtools",
     ] }
     tauri-plugin-opener = "2"
     serde = { version = "1", features = ["derive"] }
@@ -33,4 +33,4 @@
     protocol = "3.4.0"
     socks5 = { version = "0.1.0", path = "socks5" }
     tauri-plugin-log = "2"
-tiny_http = "0.12.0"
+    tiny_http = "0.12.0"

@@ -18,9 +18,8 @@
         unfortunately have to restrict requests to 'self' thanks to 
         https://github.com/w3c/webappsec-csp/issues/733 
       -->
-  <!-- FIXME: remove font-src -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; child-src 'none'; frame-src 'none'; worker-src %VITE_SUBDOMAIN_WILDCARD_URL%/sw.js; font-src *;" />
+    content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; child-src 'none'; prefetch-src 'none'; frame-src 'none'; worker-src %VITE_SUBDOMAIN_WILDCARD_URL%/sw.js; font-src *;" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com">

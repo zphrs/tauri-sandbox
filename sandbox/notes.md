@@ -9,6 +9,6 @@ mo = new MutationObserver(mutations => {
   console.log(mutations)
 })
 mo.observe(document.documentElement, { childList: true, subtree: true })
-$0.innerHTML += "<iframe id=i></iframe>"
-alert(i.contentWindow.Date())
+document.body.innerHTML += "<iframe id=i></iframe>"
+globalThis.newRTC = i.contentWindow.RTCPeerConnection
 ```

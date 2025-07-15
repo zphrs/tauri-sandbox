@@ -38,7 +38,7 @@ async function init(
       })
     })
 
-    worker.postMessage({ appId: "excalidraw" }, [port2])
+    worker.postMessage({ appId }, [port2])
     await initDone
     setPort(port1)
   })

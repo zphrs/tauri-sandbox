@@ -1,17 +1,9 @@
 pub mod subdomain;
 
-use std::sync::Arc;
+use std::{collections::HashMap, fs, sync::Arc};
 
-use log::{info, trace};
-use tauri::{http::Response, utils::config::Csp, Runtime, Url};
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    info!("HERE");
-
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+use log::info;
+use tauri::{async_runtime::block_on, utils::config::{Csp, CspDirectiveSources}, Url};
 
 #[derive(Default)]
 struct SandboxPort(Arc<u16>);
@@ -22,18 +14,62 @@ fn get_sandbox_url(state: tauri::State<'_, SandboxPort>) -> String {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run(socks_port: u16, sandbox_port: u16) {
+pub fn run() {
+    let socks_port = block_on(async {
+        let mut socks_server =
+            socks5::Server::new().await.expect("server to start");
+        socks_server.add_filter(|addr| {
+            println!("OHH");
+
+            info!("filtering request to {addr:?}");
+            socks5::FilterResult::Allow
+        });
+
+        socks_server.port()
+    });
+
+    let sandbox_port = {
+        let server = subdomain::Server::new();
+        server.start();
+        server.port()
+    };
     let mut context = tauri::generate_context!();
-    let init_policy = context.config().app.security.csp.as_ref().unwrap();
-    let old_policy = init_policy.to_string();
-    context.config_mut().app.security.csp = Some(Csp::Policy(format!(
-        "{old_policy} frame-src http://localhost:{sandbox_port};"
-    )));
+    let init_policy = context
+        .config()
+        .app
+        .security
+        .csp
+        .as_ref()
+        .unwrap();
+    info!("{init_policy}");
+    let init_policy_str = init_policy.to_string();
+    info!("init policy: {init_policy}");
+    let old_policy = init_policy_str.split(";").map(str::trim).collect::<Vec<_>>();
+    let mut policy = HashMap::new();
+    for rule in old_policy {
+        let mut split_rule = rule.split(" ");
+        let key = split_rule.next().unwrap().to_string();
+        let values = split_rule.map(String::from).collect::<Vec<String>>();
+
+        policy.insert(key, CspDirectiveSources::List(values));
+    }
+    policy.entry("default-src".to_string()).or_insert(CspDirectiveSources::List(vec![])).push(format!("http://localhost:{sandbox_port}"));
+
+    context.config_mut().app.security.csp = Some(Csp::DirectiveMap(policy.clone()));
+    fs::write("/Users/zphrs/Library/Logs/com.plexigraph.app/lol.log", format!("{init_policy_str:?}\n{policy:#?}")).unwrap();
+
+    // context.config_mut().app.security.csp = Some(Csp::Policy(new_csp.clone()));
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
+                  .target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("logs".to_string()),
+                    },
+                ))
                 .level(log::LevelFilter::Info).build()
         )
+        
         .invoke_handler(tauri::generate_handler![get_sandbox_url])
         .manage(SandboxPort(sandbox_port.into()))
         .plugin(tauri_plugin_opener::init())
@@ -87,8 +123,8 @@ pub fn run(socks_port: u16, sandbox_port: u16) {
             .proxy_url(Url::parse(format!("socks5://127.0.0.1:{}", socks_port).as_str()).unwrap())
             .use_https_scheme(true)
             // default behavior; good to make explicit
-            .devtools(cfg!(debug_assertions));
-            // .devtools(true);
+            // .devtools(cfg!(debug_assertions));
+            .devtools(true);
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             {
                 window_builder = window_builder.allow_link_preview(false);

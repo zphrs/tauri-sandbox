@@ -12,8 +12,10 @@ const controller = new AbortController()
 const { signal } = controller
 window.addEventListener("message", (evt) => {
     console.log(evt)
-    const { method, data } = evt.data
-    if (method != 'nonce') return
+    const { id, result } = evt.data
+    if (id != 'nonce') return
     controller.abort()
-    window.nonce = data.nonce
+    window.nonce = result.nonce
 }, { signal })
+
+window.parent.postMessage({ method: "nonce", id: "nonce" }, "*");

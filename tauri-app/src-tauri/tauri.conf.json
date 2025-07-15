@@ -13,8 +13,19 @@
     "withGlobalTauri": true,
     "security": {
       "csp": {
-        "default-src": "'self' 'unsafe-inline' 'unsafe-eval' data:",
-        "worker-src": "'self'"
+        "default-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          "data:"
+        ],
+        "worker-src": [
+          "'self'"
+        ],
+        "connect-src": [
+          "ipc://localhost",
+          "tauri://localhost"
+        ]
       },
       "pattern": {
         "use": "isolation",

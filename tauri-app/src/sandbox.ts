@@ -1,7 +1,8 @@
 import { domReplacementParentSetup, localStorageParentSetup } from "frame-glue"
 import { getInitialIframeScript } from "./initialIframe"
-import { invoke } from "@tauri-apps/api/core"
-import { NONCE } from "./main"
+
+import { SUBDOMAIN_WILDCARD_URL } from "./envs"
+
 
 function composeDocument(html: string): Document {
   let doc = document.implementation.createHTMLDocument()
@@ -14,23 +15,23 @@ function composeDocument(html: string): Document {
  *
  * @param parent
  * @param port
- * @param index
+ * @param html
  * @param docId
  * @returns
  */
 export async function createSandbox(
   parent: HTMLElement,
   port: MessagePort,
-  index?: string,
+  html?: string,
   docId = "test"
 ) {
-  const url = await invoke<string>(`get_sandbox_url${NONCE}`);
+
 
   let iframe = document.createElement("iframe")
   let iframeScript = getInitialIframeScript(docId)
   let initialDoc = composeDocument(iframeScript.outerHTML)
 
-  iframe.src = `${url}/${encodeURIComponent(docId)}`
+  iframe.src = `${await SUBDOMAIN_WILDCARD_URL}/${encodeURIComponent(docId)}`
 
   iframe.sandbox.add("allow-scripts")
   iframe.sandbox.add("allow-same-origin")
@@ -66,14 +67,9 @@ export async function createSandbox(
   await setPort(port)
   replaceDom(initialDoc.documentElement.outerHTML)
   await localStorageParentSetup(docId, iframe)
-  let html =
-    index ??
+  html =
+    html ??
     `
-    <script>
-    console.log("Successfully ran script")
-    </script>
-    <script src="test.js"></script>
-
     Hello world!
     `
   let doc = composeDocument(html)
