@@ -1,2 +1,2 @@
-export declare function overrideCookie(): void;
-export declare function clearCookies(): Promise<void>;
+export declare function overrideCookie(): void
+export declare function clearCookies(): Promise<void>

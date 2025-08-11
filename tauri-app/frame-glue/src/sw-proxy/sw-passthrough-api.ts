@@ -6,16 +6,16 @@ export type {}
 declare const self: ServiceWorkerGlobalScope
 declare const globalThis: ServiceWorkerGlobalScope
 import {
-  type ClonableRequest,
-  responseToResponseInit,
-  requestAsObject,
-  proxiedRequestToFetchEvent,
+    type ClonableRequest,
+    responseToResponseInit,
+    requestAsObject,
+    proxiedRequestToFetchEvent,
 } from "./fetchConversions"
 export type ProxiedFetchRequest = {
-  id: string | number
-  params: Omit<FetchEventInit, "request"> & {
-    request: ClonableRequest
-  }
+    id: string | number
+    params: Omit<FetchEventInit, "request"> & {
+        request: ClonableRequest
+    }
 }
 
 // type ErroredProxyResponse = {
@@ -28,51 +28,56 @@ export type ProxiedFetchRequest = {
 // }
 
 type SuccessfulProxiedResponse = {
-  result: {
-    arrBuf: ArrayBuffer
-    responseInit: ResponseInit
-  }
-  id: string | number
+    result: {
+        arrBuf: ArrayBuffer
+        responseInit: ResponseInit
+    }
+    id: string | number
 }
 
 export type ProxiedResponse = SuccessfulProxiedResponse
 
 async function sendProxiedResponse(
-  port: MessagePort,
-  id: string | number,
-  res: Response
+    port: MessagePort,
+    id: string | number,
+    res: Response
 ) {
-  port.postMessage({
-    result: {
-      arrBuf: await res.arrayBuffer(),
-      responseInit: responseToResponseInit(res),
-    },
-    id,
-  } satisfies ProxiedResponse)
+    const arrBuf = await res.arrayBuffer()
+    port.postMessage(
+        {
+            result: {
+                arrBuf,
+                responseInit: responseToResponseInit(res),
+            },
+            id,
+        } satisfies ProxiedResponse,
+        [arrBuf]
+    )
 }
 async function receiveProxiedResponse(
-  port: MessagePort,
-  id: string
+    port: MessagePort,
+    id: string
 ): Promise<Response> {
-  const controller = new AbortController()
-  return new Promise(res => {
-    port.addEventListener(
-      "message",
-      (msgEvent: MessageEvent<ProxiedResponse>) => {
-        const { id: resId } = msgEvent.data
-        if (resId != id) return
-        controller.abort() // same as fetch request
-        const out = new Response(
-          msgEvent.data.result.arrBuf as ArrayBuffer,
-          msgEvent.data.result.responseInit as ResponseInit
+    const controller = new AbortController()
+    return new Promise((res) => {
+        port.addEventListener(
+            "message",
+            (msgEvent: MessageEvent<ProxiedResponse>) => {
+                const { id: resId } = msgEvent.data
+                if (resId != id) return
+                controller.abort() // same as fetch request
+                const out = new Response(
+                    msgEvent.data.result.arrBuf as ArrayBuffer,
+                    msgEvent.data.result.responseInit as ResponseInit
+                )
+                res(out)
+            },
+            { signal: controller.signal }
         )
-        res(out)
-      },
-      { signal: controller.signal }
-    )
-    port.start()
-  })
+        port.start()
+    })
 }
+
 /**
  * Used in an onfetch event in the iframe's service worker
  * @param port
@@ -83,54 +88,59 @@ async function receiveProxiedResponse(
  * @returns
  */
 export async function proxyFetchEvent(
-  port: MessagePort,
-  event: FetchEvent
+    port: MessagePort,
+    event: FetchEvent
 ): Promise<Response> {
-  console.log("Proxying ", event)
-  const id = globalThis.crypto.randomUUID()
-  port.postMessage({
-    params: {
-      request: await requestAsObject(event.request),
-      clientId: event.clientId,
-      resultingClientId: event.resultingClientId,
-    },
-    id,
-  } satisfies ProxiedFetchRequest)
-  return receiveProxiedResponse(port, id)
+    console.log("Proxying ", event)
+    const id = globalThis.crypto.randomUUID()
+    const reqAsObj = await requestAsObject(event.request)
+    port.postMessage(
+        {
+            params: {
+                request: reqAsObj,
+                clientId: event.clientId,
+                resultingClientId: event.resultingClientId,
+            },
+            id,
+        } satisfies ProxiedFetchRequest,
+        reqAsObj[1].body ? [reqAsObj[1].body] : []
+    )
+    return receiveProxiedResponse(port, id)
 }
 
 export async function sendInitEvent(port: MessagePort) {
-  port.postMessage({
-    id: "init",
-  })
+    port.postMessage({
+        id: "init",
+    })
 }
 /**
  * Used on the client's main page (or within a worker) to handle requests
  * @param port
  * @param onfetch
+ * @returns a function to call in order to stop handling events
  */
 export async function handleProxiedFetchEvent(
-  port: MessagePort,
-  onfetch: (event: FetchEvent) => void
+    port: MessagePort,
+    onfetch: (event: FetchEvent) => void
 ): Promise<() => void> {
-  const controller = new AbortController()
-  await new Promise<void>(res => {
-    port.addEventListener(
-      "message",
-      async (ev: MessageEvent<ProxiedFetchRequest>) => {
-        if (ev.data.id == "init") {
-          res()
-          return
-        }
-        const fetchEvent = proxiedRequestToFetchEvent(ev.data)
-        fetchEvent.respondWith = async r => {
-          sendProxiedResponse(port, ev.data.id, await r)
-        }
-        onfetch(fetchEvent)
-      },
-      { signal: controller.signal }
-    )
-    port.start()
-  })
-  return controller.abort
+    const controller = new AbortController()
+    await new Promise<void>((res) => {
+        port.addEventListener(
+            "message",
+            async (ev: MessageEvent<ProxiedFetchRequest>) => {
+                if (ev.data.id == "init") {
+                    res()
+                    return
+                }
+                const fetchEvent = proxiedRequestToFetchEvent(ev.data.params)
+                fetchEvent.respondWith = async (r) => {
+                    sendProxiedResponse(port, ev.data.id, await r)
+                }
+                onfetch(fetchEvent)
+            },
+            { signal: controller.signal }
+        )
+        port.start()
+    })
+    return controller.abort
 }

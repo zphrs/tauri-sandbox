@@ -1,1 +1,1 @@
-export * from './sw-passthrough-api';
+export * from "./sw-passthrough-api"
