@@ -40,5 +40,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>localhost</string>
+		<string>tauri.localhost</string>
+	</array>
 </dict>
 </plist>

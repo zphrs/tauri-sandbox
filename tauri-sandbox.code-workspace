@@ -8,6 +8,15 @@
 		},
 		{
 			"path": "tauri-app/src-tauri"
+		},
+		{
+			"path": "tauri-plugin-app-bound-domains"
+		},
+		{
+			"path": "tauri-app/src"
+		},
+		{
+			"path": "tauri-app/frame-glue"
 		}
 	],
 	"settings": {}
