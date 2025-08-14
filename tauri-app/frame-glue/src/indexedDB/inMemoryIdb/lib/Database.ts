@@ -1,7 +1,9 @@
-import FDBDatabase from "../FDBDatabase.js"
-import FDBTransaction from "../FDBTransaction.js"
-import ObjectStore from "./ObjectStore.js"
-import { queueTask } from "./scheduling.js"
+import { call } from "../../../rpcOverPorts"
+import type { GetIDBDatabaseStoresMethod } from "../../methods/GetIDBDatabaseStores"
+import FDBDatabase from "../FDBDatabase"
+import FDBTransaction from "../FDBTransaction"
+import ObjectStore from "./ObjectStore"
+import { queueTask } from "./scheduling"
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-database
 class Database {
@@ -20,6 +22,29 @@ class Database {
         this._port = port
 
         this.processTransactions = this.processTransactions.bind(this)
+    }
+
+    public async sync() {
+        this.rawObjectStores.clear()
+        for (const objectStore of (
+            await call<GetIDBDatabaseStoresMethod>(
+                this._port,
+                "getIDBDBStores",
+                {
+                    name: this.name,
+                }
+            )
+        ).map(({ name, parameters }) => {
+            const os = new ObjectStore(
+                this,
+                name,
+                parameters.keyPath ?? null,
+                !!parameters.autoIncrement
+            )
+            return os
+        })) {
+            this.rawObjectStores.set(objectStore.name, objectStore)
+        }
     }
 
     public processTransactions() {

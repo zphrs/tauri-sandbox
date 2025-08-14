@@ -8,7 +8,7 @@ const extractKey = (
 ):
     | {
           type: "found"
-          key: any
+          key: unknown
       }
     | {
           type: "notFound"
@@ -24,9 +24,9 @@ const extractKey = (
                 item !== undefined &&
                 item !== null &&
                 typeof item !== "string" &&
-                (item as any).toString
+                (item as object).toString
             ) {
-                item = (item as any).toString()
+                item = (item as object).toString()
             }
             const key = extractKey(item, value).key
             result.push(valueToKey(key))
@@ -62,7 +62,7 @@ const extractKey = (
             return { type: "notFound" }
         }
 
-        object = object[identifier]
+        object = (object as { [key: string]: unknown })[identifier]
     }
 
     return { type: "found", key: object }

@@ -1,6 +1,6 @@
-import FDBFactory from "./FDBFactory"
-import { getMessagePort } from "../../SetupCrossthreadedPorts"
+// import FDBFactory from "./FDBFactory"
+// import { getMessagePort } from "../../SetupCrossthreadedPorts"
 
-const fakeIndexedDB = new FDBFactory(await getMessagePort("indexedDB"))
+// const fakeIndexedDB = new FDBFactory(await getMessagePort("indexedDB"))
 
-export default fakeIndexedDB
+// export default fakeIndexedDB

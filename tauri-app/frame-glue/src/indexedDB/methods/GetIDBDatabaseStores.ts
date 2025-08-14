@@ -1,10 +1,18 @@
 import { type Method, handleRequests } from "../../rpcOverPorts"
+import type { KeyPath } from "../inMemoryIdb/lib/types"
 import { openedDbs } from "./OpenIDBDatabase"
+
+type SerializedIndex = {
+    name: string
+    keyPath: KeyPath
+    multiEntry: boolean
+    unique: boolean
+}
 
 export type Store = {
     name: string
     parameters: IDBObjectStoreParameters
-    indexNames: string[]
+    indexes: SerializedIndex[]
 }
 
 export type GetIDBDatabaseStoresMethod = Method<
@@ -40,6 +48,7 @@ export function handleGetIDBDatabaseStores(port: MessagePort, docId: string) {
         }
     )
 }
+
 function idbStoresFromDb(db: IDBDatabase) {
     const names = db.objectStoreNames
     let tx = db.transaction(names, "readonly")
@@ -47,13 +56,23 @@ function idbStoresFromDb(db: IDBDatabase) {
 
     for (const name of names) {
         const store = tx.objectStore(name)
+        const indexes: SerializedIndex[] = []
+        for (const indexName of store.indexNames) {
+            const idx = store.index(indexName)
+            indexes.push({
+                name: idx.name,
+                keyPath: idx.keyPath,
+                multiEntry: idx.multiEntry,
+                unique: idx.unique,
+            })
+        }
         out.push({
             name,
             parameters: {
                 keyPath: store.keyPath,
                 autoIncrement: store.autoIncrement,
             },
-            indexNames: [...store.indexNames],
+            indexes,
         })
     }
 

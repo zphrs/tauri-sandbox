@@ -73,7 +73,7 @@ class RecordStore {
         const deletedRecords: Record[] = []
 
         this.records = this.records.filter((record) => {
-            const shouldDelete = range.includes(record.value)
+            const shouldDelete = range.includes(record.value as Key)
 
             if (shouldDelete) {
                 deletedRecords.push(record)

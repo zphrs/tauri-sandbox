@@ -1,10 +1,11 @@
-import FDBCursor from "./FDBCursor.js"
+import FDBCursor from "./FDBCursor"
+import type FDBRequest from "./FDBRequest"
 import type {
     CursorRange,
     CursorSource,
     FDBCursorDirection,
     Value,
-} from "./lib/types.js"
+} from "./lib/types"
 
 class FDBCursorWithValue extends FDBCursor {
     public value: Value = undefined
@@ -13,7 +14,7 @@ class FDBCursorWithValue extends FDBCursor {
         source: CursorSource,
         range: CursorRange,
         direction?: FDBCursorDirection,
-        request?: any
+        request?: FDBRequest
     ) {
         super(source, range, direction, request)
     }

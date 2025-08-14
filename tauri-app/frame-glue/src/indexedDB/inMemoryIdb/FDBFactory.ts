@@ -1,14 +1,14 @@
-import { call } from "../../rpcOverPorts.js"
-import FDBDatabase from "./FDBDatabase.js"
-import FDBOpenDBRequest from "./FDBOpenDBRequest.js"
-import FDBVersionChangeEvent from "./FDBVersionChangeEvent.js"
-import cmp from "./lib/cmp.js"
-import Database from "./lib/Database.js"
-import enforceRange from "./lib/enforceRange.js"
-import { AbortError, VersionError } from "./lib/errors.js"
-import FakeEvent from "./lib/FakeEvent.js"
-import { queueTask } from "./lib/scheduling.js"
-import type { GetDbInfoMethod } from "../methods/GetDbInfo.js"
+import { call } from "../../rpcOverPorts"
+import FDBDatabase from "./FDBDatabase"
+import FDBOpenDBRequest from "./FDBOpenDBRequest"
+import FDBVersionChangeEvent from "./FDBVersionChangeEvent"
+import cmp from "./lib/cmp"
+import Database from "./lib/Database"
+import enforceRange from "./lib/enforceRange"
+import { AbortError, VersionError } from "./lib/errors"
+import FakeEvent from "./lib/FakeEvent"
+import { queueTask } from "./lib/scheduling"
+import type { GetDbInfoMethod } from "../methods/GetDbInfo"
 import type { OpenIDBDatabaseMethod } from "../methods/OpenIDBDatabase"
 
 const waitForOthersClosedDelete = (
@@ -155,10 +155,13 @@ const runVersionchangeTransaction = (
         })
         request.dispatchEvent(event)
 
-        transaction.addEventListener("error", () => {
+        transaction.addEventListener("error", (e) => {
             connection._runningVersionchangeTransaction = false
             // throw arguments[0].target.error;
-            // console.log("error in versionchange transaction - not sure if anything needs to be done here", e.target.error.name);
+            console.log(
+                "error in versionchange transaction - not sure if anything needs to be done here",
+                e.target.error.name
+            )
         })
         transaction.addEventListener("abort", () => {
             connection._runningVersionchangeTransaction = false
@@ -178,7 +181,7 @@ const runVersionchangeTransaction = (
                     {
                         name: connection.name,
                         version: version,
-                        doOnUpgrade: [],
+                        doOnUpgrade: transaction._upgradeActions,
                     }
                 )
                 if (connection._closePending) {
@@ -211,6 +214,12 @@ const openDatabase = async (
         databases.set(name, db)
     } else {
         db = databases.get(name) ?? new Database(name, oldVersion, port)
+        // have to sync object store & index properties here because
+        // once the database is returned all the object stores' and indexes'
+        // properties are available without awaiting a request.
+        // also ensures that the rules of an index can be upheld without
+        // doing cross-process communication.
+        await db.sync()
     }
 
     if (version === undefined) {

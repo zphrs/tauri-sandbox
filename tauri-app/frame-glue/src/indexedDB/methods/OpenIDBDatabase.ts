@@ -47,6 +47,7 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                     switch (upgradeAction.method) {
                         case "createObjectStore": {
                             const { name, options } = upgradeAction.params
+
                             const store = db.createObjectStore(name, options)
                             handleObjectStoreActions(
                                 upgradeAction.params.doOnUpgrade,
@@ -55,7 +56,14 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                             break
                         }
                         case "deleteObjectStore": {
-                            const { name } = upgradeAction.params
+                            let { name } = upgradeAction.params
+                            if (
+                                db.transaction(name).objectStore(name)
+                                    .keyPath === null
+                            ) {
+                                db.deleteObjectStore(`${name}:metadata`)
+                                name = `${name}:main`
+                            }
                             db.deleteObjectStore(name)
                             break
                         }
@@ -67,8 +75,8 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                     const db = req.result
                     openedDbs[`${docId}:${name}`] = db
                     const names = db.objectStoreNames
-                    let tx = db.transaction(names, "readonly")
-                    let out: OpenIDBDatabaseMethod["res"]["result"]["objectStores"] =
+                    const tx = db.transaction(names, "readonly")
+                    const out: OpenIDBDatabaseMethod["res"]["result"]["objectStores"] =
                         []
 
                     for (const name of names) {

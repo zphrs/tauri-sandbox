@@ -1,7 +1,7 @@
+import { FDBFactory } from "./index"
 import { describe, expect, test } from "vitest"
 
 import { setupIDBMethodHandlersFromPort } from "./methods"
-import FDBFactory from "./inMemoryIdb/FDBFactory"
 
 async function getDatabase(
     name: string,
@@ -9,16 +9,15 @@ async function getDatabase(
     version?: number
 ): Promise<IDBDatabase> {
     const { port1: parent, port2: child } = new MessageChannel()
-    console.log(window.indexedDB)
     setupIDBMethodHandlersFromPort(parent, "test")
     const idb = new FDBFactory(child)
     const request = idb.open(name, version)
     return new Promise((res, rej) => {
-        request.onerror = (_event: Event) => {
+        request.onerror = () => {
             console.error(request.error)
             rej(request.error)
         }
-        request.onsuccess = (_event: Event) => {
+        request.onsuccess = () => {
             const db = request.result
             res(db)
         }
@@ -28,7 +27,7 @@ async function getDatabase(
     })
 }
 
-describe("indexedDB good path", async (_api) => {
+describe("indexedDB good path", async () => {
     const customerData = [
         {
             ssn: "444-44-4444",
@@ -44,8 +43,11 @@ describe("indexedDB good path", async (_api) => {
             const objStore = db.createObjectStore("customers", {
                 keyPath: "ssn",
             })
+
             objStore.createIndex("name", "name", { unique: false })
+
             objStore.createIndex("email", "email", { unique: true })
+
             customerData.forEach((customer) => {
                 objStore.add(customer)
             })
@@ -65,20 +67,34 @@ describe("indexedDB good path", async (_api) => {
         3
     )
 
-    db.onerror = (event) => {
+    db.onerror = (e) => {
+        const target = e.target as IDBRequest<unknown>
         // Generic error handler for all errors targeted at this database's
         // requests!
-        throw new Error(
-            `Database error: ${(event.target as IDBRequest)?.error}`
-        )
+        throw target.error
     }
     test("get bill", async () => {
         const tx = db.transaction("customers", "readonly")
         const objStore = tx.objectStore("customers")
-        let data = await new Promise((res) => {
-            let e = objStore.get("444-44-4444")
+        const data = await new Promise((res) => {
+            const e = objStore.get("444-44-4444")
             e.onsuccess = (e) => {
-                res((e.target as IDBRequest<any>).result)
+                res((e.target as IDBRequest<unknown>).result)
+            }
+        })
+        expect(data).toStrictEqual(customerData[0])
+    })
+
+    test("get bill through index", async () => {
+        const tx = db.transaction("customers", "readonly")
+        const objStore = tx.objectStore("customers")
+        const data = await new Promise((res) => {
+            const request = objStore
+                .index("email")
+                .openCursor("bill@company.com")
+
+            request.onsuccess = () => {
+                res(request.result?.value)
             }
         })
         expect(data).toStrictEqual(customerData[0])

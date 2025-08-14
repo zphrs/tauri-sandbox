@@ -1,4 +1,4 @@
-import FDBRequest from "./FDBRequest.js"
+import FDBRequest from "./FDBRequest"
 import type { EventCallback } from "./lib/types"
 
 class FDBOpenDBRequest extends FDBRequest {

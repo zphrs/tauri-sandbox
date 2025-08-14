@@ -1,7 +1,7 @@
-import cmp from "./lib/cmp.js"
-import { DataError } from "./lib/errors.js"
+import cmp from "./lib/cmp"
+import { DataError } from "./lib/errors"
 import type { Key } from "./lib/types"
-import valueToKey from "./lib/valueToKey.js"
+import valueToKey from "./lib/valueToKey"
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#range-concept
 class FDBKeyRange {
@@ -30,10 +30,10 @@ class FDBKeyRange {
     }
 
     public static bound(
-        lower: Key,
-        upper: Key,
+        lower: IDBValidKey,
+        upper: IDBValidKey,
         lowerOpen: boolean = false,
-        upperOpen: boolean = false,
+        upperOpen: boolean = false
     ) {
         if (arguments.length < 2) {
             throw new TypeError()
@@ -49,16 +49,16 @@ class FDBKeyRange {
         return new FDBKeyRange(lower, upper, lowerOpen, upperOpen)
     }
 
-    public readonly lower: Key | undefined
-    public readonly upper: Key | undefined
+    public readonly lower: IDBValidKey | undefined
+    public readonly upper: IDBValidKey | undefined
     public readonly lowerOpen: boolean
     public readonly upperOpen: boolean
 
     constructor(
-        lower: Key | undefined,
-        upper: Key | undefined,
+        lower: IDBValidKey | undefined,
+        upper: IDBValidKey | undefined,
         lowerOpen: boolean,
-        upperOpen: boolean,
+        upperOpen: boolean
     ) {
         this.lower = lower
         this.upper = upper

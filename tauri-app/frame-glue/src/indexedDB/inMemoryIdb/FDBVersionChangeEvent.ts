@@ -1,4 +1,4 @@
-import FakeEvent from "./lib/FakeEvent.js"
+import FakeEvent from "./lib/FakeEvent"
 
 class FDBVersionChangeEvent extends FakeEvent {
     public newVersion: number | null
@@ -6,7 +6,7 @@ class FDBVersionChangeEvent extends FakeEvent {
 
     constructor(
         type: "blocked" | "success" | "upgradeneeded" | "versionchange",
-        parameters: { newVersion?: number | null; oldVersion?: number } = {},
+        parameters: { newVersion?: number | null; oldVersion?: number } = {}
     ) {
         super(type)
 

@@ -1,11 +1,11 @@
-import FDBKeyRange from "../FDBKeyRange.js"
-import FDBTransaction from "../FDBTransaction.js"
-import { ConstraintError } from "./errors.js"
-import extractKey from "./extractKey.js"
-import ObjectStore from "./ObjectStore.js"
-import RecordStore from "./RecordStore.js"
-import type { Key, KeyPath, Record } from "./types.js"
-import valueToKey from "./valueToKey.js"
+import { FDBKeyRange, FDBTransaction } from "../"
+
+import { ConstraintError } from "./errors"
+import extractKey from "./extractKey"
+import ObjectStore from "./ObjectStore"
+import RecordStore from "./RecordStore"
+import type { Key, KeyPath, Record } from "./types"
+import valueToKey from "./valueToKey"
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-index
 class Index {
@@ -63,8 +63,9 @@ class Index {
     public getValue(key: FDBKeyRange | Key) {
         const record = this.records.get(key)
 
+        // can treat it like a key because in index
         return record !== undefined
-            ? this.rawObjectStore.getValue(record.value)
+            ? this.rawObjectStore.getValue(record.value as Key)
             : undefined
     }
 
@@ -76,7 +77,7 @@ class Index {
 
         const records = []
         for (const record of this.records.values(range)) {
-            records.push(this.rawObjectStore.getValue(record.value))
+            records.push(this.rawObjectStore.getValue(record.value as Key))
             if (records.length >= count) {
                 break
             }
@@ -90,8 +91,9 @@ class Index {
         let indexKey
         try {
             indexKey = extractKey(this.keyPath, newRecord.value).key
-        } catch (err: any) {
-            if (err.name === "DataError") {
+        } catch (err: unknown) {
+            const error = err as DOMException
+            if (error.name === "DataError") {
                 // Invalid key is not an actual error, just means we do not store an entry in this index
                 return
             }
@@ -102,6 +104,7 @@ class Index {
         if (!this.multiEntry || !Array.isArray(indexKey)) {
             try {
                 valueToKey(indexKey)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
                 return
             }
@@ -113,7 +116,8 @@ class Index {
                 if (keep.indexOf(part) < 0) {
                     try {
                         keep.push(valueToKey(part))
-                    } catch (err) {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    } catch (_err: unknown) {
                         /* Do nothing */
                     }
                 }
@@ -123,7 +127,7 @@ class Index {
 
         if (!this.multiEntry || !Array.isArray(indexKey)) {
             if (this.unique) {
-                const existingRecord = this.records.get(indexKey)
+                const existingRecord = this.records.get(indexKey as Key)
                 if (existingRecord) {
                     throw new ConstraintError()
                 }
@@ -141,7 +145,7 @@ class Index {
 
         if (!this.multiEntry || !Array.isArray(indexKey)) {
             this.records.add({
-                key: indexKey,
+                key: indexKey as Key,
                 value: newRecord.key,
             })
         } else {
@@ -167,16 +171,17 @@ class Index {
                         this.storeRecord(record)
                     }
                     this.initialized = true
-                } catch (err: any) {
+                } catch (err: unknown) {
                     // console.error(err);
-                    transaction._abort(err.name)
+
+                    transaction._abort((err as DOMException).name)
                 }
             },
             source: null,
         })
     }
 
-    public count(range: FDBKeyRange) {
+    public count(range?: FDBKeyRange) {
         let count = 0
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars

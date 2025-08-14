@@ -9,7 +9,7 @@ import { type SerializedQuery, deserializeQuery } from "./SerializedRange"
 type Add = Notification<
     "add",
     {
-        value: any
+        value: unknown
         key?: IDBValidKey
     }
 >
@@ -26,7 +26,7 @@ type Delete = Notification<
 type Put = Notification<
     "put",
     {
-        value: any
+        value: unknown
         key?: IDBValidKey
     }
 >
@@ -72,10 +72,14 @@ export function handleExecuteIDBTransactionMethod(
         async (req) => {
             const { dbName, ops: txs } = req
             const db = openedDbs[`${docId}:${dbName}`]
+
             const tx = db.transaction(Object.keys(txs), "readwrite")
-            for (const objStore in txs) {
-                const changes = txs[objStore]
-                const store = tx.objectStore(objStore)
+            for (const storeName in txs) {
+                const changes = txs[storeName]
+                const store: IDBObjectStore = tx.objectStore(
+                    `${storeName}:main`
+                )
+
                 for (const change of changes) {
                     performWriteOperation(change, store)
                 }
@@ -102,7 +106,7 @@ export async function performWriteOperation(
             return store.clear()
         }
         case "delete": {
-            let { query } = change.params
+            const { query } = change.params
             return store.delete(deserializeQuery(query))
         }
         case "put": {
@@ -110,11 +114,12 @@ export async function performWriteOperation(
             return store.put(value, key)
         }
         case "replace": {
+            // key stays the same so no need to update the metadata store
             const { key, index, value } = change.params
             const request = store.index(index).openCursor(key)
             return new Promise<IDBRequest<IDBValidKey>>((res) => {
                 request.onsuccess = () => {
-                    res(request.result?.update(value)!)
+                    res(request.result!.update(value))
                 }
             })
         }

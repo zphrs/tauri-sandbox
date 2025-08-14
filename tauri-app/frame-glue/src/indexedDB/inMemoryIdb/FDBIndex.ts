@@ -1,19 +1,19 @@
-import FDBCursor from "./FDBCursor.js"
-import FDBCursorWithValue from "./FDBCursorWithValue.js"
-import FDBKeyRange from "./FDBKeyRange.js"
-import FDBObjectStore from "./FDBObjectStore.js"
-import FDBRequest from "./FDBRequest.js"
-import enforceRange from "./lib/enforceRange.js"
+import FDBCursor from "./FDBCursor"
+import FDBCursorWithValue from "./FDBCursorWithValue"
+import FDBKeyRange from "./FDBKeyRange"
+import FDBObjectStore from "./FDBObjectStore"
+import FDBRequest from "./FDBRequest"
+import enforceRange from "./lib/enforceRange"
 import {
     ConstraintError,
     InvalidStateError,
     TransactionInactiveError,
-} from "./lib/errors.js"
-import FakeDOMStringList from "./lib/FakeDOMStringList.js"
-import Index from "./lib/Index.js"
+} from "./lib/errors"
+import FakeDOMStringList from "./lib/FakeDOMStringList"
+import Index from "./lib/Index"
 import type { FDBCursorDirection, Key, KeyPath } from "./lib/types"
-import valueToKey from "./lib/valueToKey.js"
-import valueToKeyRange from "./lib/valueToKeyRange.js"
+import valueToKey from "./lib/valueToKey"
+import valueToKeyRange from "./lib/valueToKeyRange"
 
 const confirmActiveTransaction = (index: FDBIndex) => {
     if (index._rawIndex.deleted || index.objectStore._rawObjectStore.deleted) {
@@ -50,7 +50,7 @@ class FDBIndex {
     }
 
     // https://w3c.github.io/IndexedDB/#dom-idbindex-name
-    set name(name: any) {
+    set name(name: string) {
         const transaction = this.objectStore.transaction
 
         if (!transaction.db._runningVersionchangeTransaction) {
@@ -92,11 +92,11 @@ class FDBIndex {
                 .filter((indexName) => {
                     const index =
                         this.objectStore._rawObjectStore.rawIndexes.get(
-                            indexName,
+                            indexName
                         )
                     return index && !index.deleted
                 })
-                .sort(),
+                .sort()
         )
 
         transaction._rollbackLog.push(() => {
@@ -107,18 +107,18 @@ class FDBIndex {
             this.objectStore._rawObjectStore.rawIndexes.delete(name)
             this.objectStore._rawObjectStore.rawIndexes.set(
                 oldName,
-                this._rawIndex,
+                this._rawIndex
             )
             this.objectStore.indexNames = new FakeDOMStringList(
-                ...oldIndexNames,
+                ...oldIndexNames
             )
         })
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-openCursor-IDBRequest-any-range-IDBCursorDirection-direction
     public openCursor(
-        range?: FDBKeyRange | Key | null | undefined,
-        direction?: FDBCursorDirection,
+        range?: FDBKeyRange | IDBValidKey | null | undefined,
+        direction?: FDBCursorDirection
     ) {
         confirmActiveTransaction(this)
 
@@ -144,8 +144,8 @@ class FDBIndex {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-openKeyCursor-IDBRequest-any-range-IDBCursorDirection-direction
     public openKeyCursor(
-        range?: FDBKeyRange | Key | null | undefined,
-        direction?: FDBCursorDirection,
+        range?: FDBKeyRange | IDBKeyRange | null | undefined,
+        direction?: FDBCursorDirection
     ) {
         confirmActiveTransaction(this)
 
@@ -195,7 +195,7 @@ class FDBIndex {
             operation: this._rawIndex.getAllValues.bind(
                 this._rawIndex,
                 range,
-                count,
+                count
             ),
             source: this,
         })
@@ -228,20 +228,20 @@ class FDBIndex {
             operation: this._rawIndex.getAllKeys.bind(
                 this._rawIndex,
                 range,
-                count,
+                count
             ),
             source: this,
         })
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-count-IDBRequest-any-key
-    public count(key: FDBKeyRange | Key | null | undefined) {
+    public count(k: FDBKeyRange | IDBValidKey | null | undefined) {
         confirmActiveTransaction(this)
-
-        if (key === null) {
+        let key: FDBKeyRange | undefined
+        if (k === null) {
             key = undefined
         }
-        if (key !== undefined && !(key instanceof FDBKeyRange)) {
+        if (k !== undefined && !(k instanceof FDBKeyRange)) {
             key = FDBKeyRange.only(valueToKey(key))
         }
 

@@ -1,13 +1,14 @@
-import type { Write } from "../methods/executeIDBTransaction.js"
-import type { ObjectStoreUpgradeActions } from "../methods/OpenIDBDatabase.js"
-import FDBCursor from "./FDBCursor.js"
-import FDBCursorWithValue from "./FDBCursorWithValue.js"
-import FDBIndex from "./FDBIndex.js"
-import FDBKeyRange from "./FDBKeyRange.js"
-import FDBRequest from "./FDBRequest.js"
-import FDBTransaction from "./FDBTransaction.js"
-import canInjectKey from "./lib/canInjectKey.js"
-import enforceRange from "./lib/enforceRange.js"
+import type { Write } from "../methods/executeIDBTransaction"
+import type { ObjectStoreUpgradeActions } from "../methods/OpenIDBDatabase"
+
+import FDBCursor from "./FDBCursor"
+import FDBCursorWithValue from "./FDBCursorWithValue"
+import FDBIndex from "./FDBIndex"
+import FDBKeyRange from "./FDBKeyRange"
+import FDBRequest from "./FDBRequest"
+import FDBTransaction from "./FDBTransaction"
+import canInjectKey from "./lib/canInjectKey"
+import enforceRange from "./lib/enforceRange"
 import {
     ConstraintError,
     DataError,
@@ -16,15 +17,15 @@ import {
     NotFoundError,
     ReadOnlyError,
     TransactionInactiveError,
-} from "./lib/errors.js"
-import extractKey from "./lib/extractKey.js"
-import FakeDOMStringList from "./lib/FakeDOMStringList.js"
-import Index from "./lib/Index.js"
-import ObjectStore from "./lib/ObjectStore.js"
-import type { FDBCursorDirection, Key, KeyPath, Value } from "./lib/types.js"
-import validateKeyPath from "./lib/validateKeyPath.js"
-import valueToKey from "./lib/valueToKey.js"
-import valueToKeyRange from "./lib/valueToKeyRange.js"
+} from "./lib/errors"
+import extractKey from "./lib/extractKey"
+import FakeDOMStringList from "./lib/FakeDOMStringList"
+import Index from "./lib/Index"
+import ObjectStore from "./lib/ObjectStore"
+import type { FDBCursorDirection, Key, KeyPath, Value } from "./lib/types"
+import validateKeyPath from "./lib/validateKeyPath"
+import valueToKey from "./lib/valueToKey"
+import valueToKeyRange from "./lib/valueToKeyRange"
 
 const confirmActiveTransaction = (objectStore: FDBObjectStore) => {
     if (objectStore._rawObjectStore.deleted) {
@@ -39,7 +40,7 @@ const confirmActiveTransaction = (objectStore: FDBObjectStore) => {
 const buildRecordAddPut = (
     objectStore: FDBObjectStore,
     value: Value,
-    key: Key
+    key?: Key
 ) => {
     confirmActiveTransaction(objectStore)
 
@@ -82,7 +83,7 @@ const buildRecordAddPut = (
     }
 
     return {
-        key,
+        key: key as Key,
         value: clone,
     }
 }
@@ -120,9 +121,9 @@ class FDBObjectStore {
     get name() {
         return this._name
     }
-
+    // TODO: need to forward to parent thread
     // http://w3c.github.io/IndexedDB/#dom-idbobjectstore-name
-    set name(name: any) {
+    set name(name: string) {
         const transaction = this.transaction
 
         if (!transaction.db._runningVersionchangeTransaction) {
@@ -202,6 +203,14 @@ class FDBObjectStore {
         }
         const record = buildRecordAddPut(this, value, key)
 
+        this._updateWriteLog.push({
+            method: "put",
+            params: {
+                value,
+                key,
+            },
+        })
+
         return this.transaction._execRequestAsync({
             operation: this._rawObjectStore.storeRecord.bind(
                 this._rawObjectStore,
@@ -218,6 +227,16 @@ class FDBObjectStore {
             throw new TypeError()
         }
         const record = buildRecordAddPut(this, value, key)
+
+        // theoretically this could fail, but we check if key exists in obj
+        // and abort tx if so
+        this._updateWriteLog.push({
+            method: "add",
+            params: {
+                value,
+                key,
+            },
+        })
 
         return this.transaction._execRequestAsync({
             operation: this._rawObjectStore.storeRecord.bind(
@@ -243,6 +262,13 @@ class FDBObjectStore {
         if (!(key instanceof FDBKeyRange)) {
             key = valueToKey(key)
         }
+
+        this._updateWriteLog.push({
+            method: "delete",
+            params: {
+                query: key,
+            },
+        })
 
         return this.transaction._execRequestAsync({
             operation: this._rawObjectStore.deleteRecord.bind(
@@ -337,6 +363,11 @@ class FDBObjectStore {
         if (this.transaction.mode === "readonly") {
             throw new ReadOnlyError()
         }
+
+        this._updateWriteLog.push({
+            method: "clear",
+            params: undefined,
+        })
 
         return this.transaction._execRequestAsync({
             operation: this._rawObjectStore.clear.bind(
@@ -463,16 +494,14 @@ class FDBObjectStore {
         this.indexNames._push(name)
         this.indexNames._sort()
         this._rawObjectStore.rawIndexes.set(name, index)
+
+        index.initialize(this.transaction) // This is async by design
+
         // doesn't matter that we're pushing this early; tx will abort if init fails
         this._updateWriteLog.push({
             method: "createIndex",
-            params: {
-                name: name,
-                keyPath,
-                options: optionalParameters,
-            },
+            params: { name, keyPath, options: optionalParameters },
         })
-        index.initialize(this.transaction) // This is async by design
 
         return new FDBIndex(this, index)
     }
@@ -548,6 +577,11 @@ class FDBObjectStore {
             },
             source: this,
         })
+
+        this._updateWriteLog.push({
+            method: "deleteIndex",
+            params: { name },
+        })
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBObjectStore-count-IDBRequest-any-key
@@ -562,8 +596,8 @@ class FDBObjectStore {
         }
 
         return this.transaction._execRequestAsync({
-            operation: () => {
-                return this._rawObjectStore.count(key)
+            operation: async () => {
+                return await this._rawObjectStore.count(key)
             },
             source: this,
         })

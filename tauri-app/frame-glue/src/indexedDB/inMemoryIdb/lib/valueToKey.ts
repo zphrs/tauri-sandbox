@@ -2,14 +2,14 @@ import { DataError } from "./errors"
 import type { Key } from "./types"
 
 // https://w3c.github.io/IndexedDB/#convert-value-to-key
-const valueToKey = (input: any, seen?: Set<object>): Key | Key[] => {
+const valueToKey = (input: unknown, seen?: Set<object>): Key | Key[] => {
     if (typeof input === "number") {
         if (isNaN(input)) {
             throw new DataError()
         }
         return input
     } else if (Object.prototype.toString.call(input) === "[object Date]") {
-        const ms = input.valueOf()
+        const ms = (input as Date).valueOf()
         if (isNaN(ms)) {
             throw new DataError()
         }
@@ -40,7 +40,7 @@ const valueToKey = (input: any, seen?: Set<object>): Key | Key[] => {
             length = input.byteLength
         }
 
-        if ((arrayBuffer as any).detached) {
+        if ("detached" in arrayBuffer && arrayBuffer.detached) {
             return new ArrayBuffer(0)
         }
 

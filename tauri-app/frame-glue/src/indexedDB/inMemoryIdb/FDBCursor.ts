@@ -1,23 +1,23 @@
-import FDBKeyRange from "./FDBKeyRange.js"
-import FDBObjectStore from "./FDBObjectStore.js"
-import FDBRequest from "./FDBRequest.js"
-import cmp from "./lib/cmp.js"
+import { FDBCursorWithValue, FDBKeyRange, FDBObjectStore, FDBRequest } from "."
+
+import cmp from "./lib/cmp"
 import {
     DataError,
     InvalidAccessError,
     InvalidStateError,
     ReadOnlyError,
     TransactionInactiveError,
-} from "./lib/errors.js"
-import extractKey from "./lib/extractKey.js"
+} from "./lib/errors"
+import extractKey from "./lib/extractKey"
 import type {
     CursorRange,
     CursorSource,
     FDBCursorDirection,
     Key,
     Value,
-} from "./lib/types.js"
-import valueToKey from "./lib/valueToKey.js"
+    Record,
+} from "./lib/types"
+import valueToKey from "./lib/valueToKey"
 
 const getEffectiveObjectStore = (cursor: FDBCursor) => {
     if (cursor.source instanceof FDBObjectStore) {
@@ -31,13 +31,15 @@ const getEffectiveObjectStore = (cursor: FDBCursor) => {
 // cursor iteration it'd also have to look at values to be precise, which would be complicated. This should get us 99%
 // of the way there.
 const makeKeyRange = (
-    range: FDBKeyRange,
+    range: FDBKeyRange | IDBValidKey | undefined,
     lowers: (Key | undefined)[],
     uppers: (Key | undefined)[]
 ) => {
     // Start with bounds from range
-    let lower = range !== undefined ? range.lower : undefined
-    let upper = range !== undefined ? range.upper : undefined
+    let [lower, upper] =
+        typeof range === "object" && "lower" in range
+            ? [range?.lower, range?.upper]
+            : [undefined, undefined]
 
     // Augment with values from lowers and uppers
     for (const lowerTemp of lowers) {
@@ -76,13 +78,13 @@ class FDBCursor {
 
     private _gotValue: boolean = false
     private _range: CursorRange
-    private _position = undefined // Key of previously returned record
-    private _objectStorePosition = undefined
+    private _position: IDBValidKey | undefined = undefined // Key of previously returned record
+    private _objectStorePosition: IDBValidKey | undefined = undefined
     private _keyOnly: boolean = false
 
     private _source: CursorSource
     private _direction: FDBCursorDirection
-    private _key = undefined
+    private _key: IDBValidKey | undefined = undefined
     private _primaryKey: Key | undefined = undefined
 
     constructor(
@@ -137,6 +139,7 @@ class FDBCursor {
 
     // https://w3c.github.io/IndexedDB/#iterate-a-cursor
     public _iterate(key?: Key, primaryKey?: Key): this | null {
+        if (this._range === undefined) throw new InvalidStateError()
         const sourceIsObjectStore = this.source instanceof FDBObjectStore
 
         // Can't use sourceIsObjectStore because TypeScript
@@ -145,7 +148,7 @@ class FDBCursor {
                 ? this.source._rawObjectStore.records
                 : this.source._rawIndex.records
 
-        let foundRecord
+        let foundRecord: Record | undefined
         if (this.direction === "next") {
             const range = makeKeyRange(this._range, [key, this._position], [])
             for (const record of records.values(range)) {
@@ -305,13 +308,13 @@ class FDBCursor {
                 !this._keyOnly &&
                 this.toString() === "[object IDBCursorWithValue]"
             ) {
-                ;(this as any).value = undefined
+                ;(this as unknown as FDBCursorWithValue).value = undefined
             }
             result = null
         } else {
             this._position = foundRecord.key
             if (!sourceIsObjectStore) {
-                this._objectStorePosition = foundRecord.value
+                this._objectStorePosition = foundRecord.value as IDBValidKey
             }
             this._key = foundRecord.key
             if (sourceIsObjectStore) {
@@ -320,10 +323,11 @@ class FDBCursor {
                     !this._keyOnly &&
                     this.toString() === "[object IDBCursorWithValue]"
                 ) {
-                    ;(this as any).value = structuredClone(foundRecord.value)
+                    ;(this as unknown as FDBCursorWithValue).value =
+                        structuredClone(foundRecord.value)
                 }
             } else {
-                this._primaryKey = structuredClone(foundRecord.value)
+                this._primaryKey = structuredClone(foundRecord.value as Key)
                 if (
                     !this._keyOnly &&
                     this.toString() === "[object IDBCursorWithValue]"
@@ -334,9 +338,10 @@ class FDBCursor {
                     }
                     const value =
                         this.source.objectStore._rawObjectStore.getValue(
-                            foundRecord.value
+                            foundRecord.value as Key
                         )
-                    ;(this as any).value = structuredClone(value)
+                    ;(this as unknown as FDBCursorWithValue).value =
+                        structuredClone(value)
                 }
             }
             this._gotValue = true
@@ -388,7 +393,7 @@ class FDBCursor {
 
             try {
                 tempKey = extractKey(effectiveObjectStore.keyPath, clone).key
-            } catch (err) {
+            } catch {
                 /* Handled immediately below */
             }
 
@@ -398,7 +403,7 @@ class FDBCursor {
         }
 
         const record = {
-            key: effectiveKey,
+            key: effectiveKey as Key,
             value: clone,
         }
 
@@ -612,7 +617,7 @@ class FDBCursor {
         return transaction._execRequestAsync({
             operation: effectiveObjectStore._rawObjectStore.deleteRecord.bind(
                 effectiveObjectStore._rawObjectStore,
-                effectiveKey,
+                effectiveKey as Key,
                 transaction._rollbackLog
             ),
             source: this,

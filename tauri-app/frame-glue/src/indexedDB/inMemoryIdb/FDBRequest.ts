@@ -1,9 +1,9 @@
-import FDBCursor from "./FDBCursor.js"
-import FDBIndex from "./FDBIndex.js"
-import FDBObjectStore from "./FDBObjectStore.js"
-import FDBTransaction from "./FDBTransaction.js"
-import { InvalidStateError } from "./lib/errors.js"
-import FakeEventTarget from "./lib/FakeEventTarget.js"
+import FDBCursor from "./FDBCursor"
+import FDBIndex from "./FDBIndex"
+import FDBObjectStore from "./FDBObjectStore"
+import FDBTransaction from "./FDBTransaction"
+import { InvalidStateError } from "./lib/errors"
+import FakeEventTarget from "./lib/FakeEventTarget"
 import type { EventCallback } from "./lib/types"
 
 class FDBRequest extends FakeEventTarget {

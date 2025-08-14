@@ -3,7 +3,9 @@ import type {
     ObjectStoreUpgradeActions,
     UpgradeActions,
 } from "../methods/OpenIDBDatabase"
+import type FDBCursor from "./FDBCursor"
 import FDBDatabase from "./FDBDatabase"
+import type FDBIndex from "./FDBIndex"
 import FDBObjectStore from "./FDBObjectStore"
 import FDBRequest from "./FDBRequest"
 import {
@@ -42,7 +44,7 @@ class FDBTransaction extends FakeEventTarget {
 
     public _scope: Set<string>
     private _requests: {
-        operation: () => void
+        operation: () => unknown | Promise<unknown>
         request: FDBRequest
     }[] = []
 
@@ -133,7 +135,7 @@ class FDBTransaction extends FakeEventTarget {
             throw new NotFoundError()
         }
 
-        let writeActionArr =
+        const writeActionArr =
             this.mode === "versionchange"
                 ? (
                       this._upgradeActions.find(
@@ -175,8 +177,13 @@ class FDBTransaction extends FakeEventTarget {
                 request = new FDBRequest()
             } else {
                 request = new FDBRequest()
-                request.source = source
-                request.transaction = (source as any).transaction
+                request.source = source as
+                    | FDBObjectStore
+                    | FDBCursor
+                    | FDBIndex
+                    | null
+                request.transaction =
+                    "transaction" in source ? source.transaction : null
             }
         }
 
@@ -188,7 +195,7 @@ class FDBTransaction extends FakeEventTarget {
         return request
     }
 
-    public _start() {
+    public async _start() {
         this._started = true
 
         // Remove from request queue - cursor ones will be added back if necessary by cursor.continue and such
@@ -209,12 +216,12 @@ class FDBTransaction extends FakeEventTarget {
             if (!request.source) {
                 // Special requests like indexes that just need to run some code, with error handling already built into
                 // operation
-                operation()
+                await operation()
             } else {
                 let defaultAction
                 let event
                 try {
-                    const result = operation()
+                    const result = await operation()
                     request.readyState = "done"
                     request.result = result
                     request.error = undefined
@@ -227,7 +234,8 @@ class FDBTransaction extends FakeEventTarget {
                         bubbles: false,
                         cancelable: false,
                     })
-                } catch (err: any) {
+                } catch (e: unknown) {
+                    const err = e as DOMException
                     request.readyState = "done"
                     request.result = undefined
                     request.error = err

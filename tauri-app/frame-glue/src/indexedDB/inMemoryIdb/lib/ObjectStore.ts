@@ -1,4 +1,13 @@
+import { call } from "../../../rpcOverPorts"
+import type {
+    CountMethod,
+    ExecuteReadMethod,
+    GetAllKeysMethod,
+    GetAllWithKeysMethod,
+    Read,
+} from "../../methods/readFromStore"
 import FDBKeyRange from "../FDBKeyRange"
+import cmp from "./cmp"
 import Database from "./Database"
 import { ConstraintError, DataError } from "./errors"
 import extractKey from "./extractKey"
@@ -34,55 +43,149 @@ class ObjectStore {
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-retrieving-a-value-from-an-object-store
-    public getKey(key: FDBKeyRange | Key) {
-        const record = this.records.get(key)
+    public async getKey(key: FDBKeyRange | Key) {
+        let k: FDBKeyRange
+        if (!(key instanceof FDBKeyRange)) {
+            k = FDBKeyRange.only(key)
+        } else {
+            k = key
+        }
 
-        return record !== undefined ? structuredClone(record.key) : undefined
+        return (await this.getAllRecords(k, 1, true)).map((r) => r.key)
     }
 
     // http://w3c.github.io/IndexedDB/#retrieve-multiple-keys-from-an-object-store
-    public getAllKeys(range: FDBKeyRange, count?: number) {
-        if (count === undefined || count === 0) {
-            count = Infinity
-        }
+    public async getAllKeys(range: FDBKeyRange | undefined, count?: number) {
+        return (await this.getAllRecords(range, count, true)).map((r) => r.key)
+    }
 
-        const records = []
-        for (const record of this.records.values(range)) {
-            records.push(structuredClone(record.key))
-            if (records.length >= count) {
-                break
-            }
-        }
-
-        return records
+    private async executeReadMethod<
+        Method extends ExecuteReadMethod<Read, unknown>
+    >(
+        method: Method["req"]["params"]["call"]["method"],
+        params: Method["req"]["params"]["call"]["params"]
+    ) {
+        const readCall = { method, params } as Method["req"]["params"]["call"]
+        return await call<Method>(this.rawDatabase._port, "executeReadMethod", {
+            params: {
+                dbName: this.rawDatabase.name,
+                store: this.name,
+                call: readCall,
+            },
+            transferableObjects: [],
+        })
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-retrieving-a-value-from-an-object-store
-    public getValue(key: FDBKeyRange | Key) {
-        const record = this.records.get(key)
-
-        return record !== undefined ? structuredClone(record.value) : undefined
+    public async getValue(key: FDBKeyRange | Key) {
+        let k: FDBKeyRange
+        if (!(key instanceof FDBKeyRange)) {
+            k = FDBKeyRange.only(key)
+        } else {
+            k = key
+        }
+        const val = (await this.getAllRecords(k, 1)).map((r) => r.value)
+        return val[0]
     }
 
-    // http://w3c.github.io/IndexedDB/#retrieve-multiple-values-from-an-object-store
-    public getAllValues(range: FDBKeyRange, count?: number) {
+    private async getAllRecords(
+        range: FDBKeyRange | undefined,
+        count: number | undefined,
+        ignoreValues: boolean = false
+    ): Promise<Record[]> {
         if (count === undefined || count === 0) {
             count = Infinity
         }
-
-        const records = []
+        const kvPromise = this.executeReadMethod<
+            GetAllWithKeysMethod | GetAllKeysMethod
+        >(ignoreValues ? "getAllKeys" : "getAllWithKeys", {
+            query: range,
+            // need to get `count` values for the case that all the cached
+            // keys in the range are greater than all fetched keys
+            // in the range
+            count,
+        })
+        const cachedRecords: Record[] = []
         for (const record of this.records.values(range)) {
-            records.push(structuredClone(record.value))
-            if (records.length >= count) {
+            cachedRecords.push(structuredClone(record))
+            if (cachedRecords.length >= count) {
                 break
             }
         }
+        // starts above and awaits here because the RPC
+        // executes on its own, so we can parallelize the fetches
+        const [values, keys] = (
+            ignoreValues
+                ? [await kvPromise, await kvPromise] // if just getting keys, replace values with keys
+                : await kvPromise
+        ) as [unknown[], IDBValidKey[]]
+        const fetchedRecords = keys.map((k, i) => {
+            return {
+                key: k,
+                value: values[i],
+            }
+        })
 
-        return records
+        // in case a key in the range is updated via a transaction
+        for (const record of fetchedRecords) {
+            const cachedValue = this.records.get(record.key)
+            if (cachedValue) {
+                record.value = cachedValue.value
+            }
+        }
+
+        // mergesort
+        const out: Record[] = []
+        let i = 0,
+            j = 0
+        while (
+            fetchedRecords.length > i &&
+            cachedRecords.length > j &&
+            out.length < count
+        ) {
+            switch (cmp(fetchedRecords[i].key, cachedRecords[j].key)) {
+                case -1: {
+                    // To avoid bloating cache, we do not update the cache
+                    // with records from the fetch
+                    out.push(fetchedRecords[i++])
+                    break
+                }
+                case 1: {
+                    out.push(cachedRecords[j++])
+                    break
+                }
+                case 0: {
+                    // if two keys are identical, keep the cached, throw away
+                    // fetched.
+                    // This is because cached can contain writes done in the current
+                    // transaction.
+                    out.push(cachedRecords[j++])
+                    // skip the identical key from fetched
+                    i++
+                }
+            }
+        }
+        if (out.length === count) {
+            return out
+        }
+        if (fetchedRecords.length > i) {
+            out.push(...fetchedRecords.slice(i, i + (count - out.length)))
+        }
+        if (cachedRecords.length > j) {
+            out.push(...cachedRecords.slice(j, j + (count - out.length)))
+        }
+        return out
+    }
+
+    // http://w3c.github.io/IndexedDB/#retrieve-multiple-values-from-an-object-store
+    // cannot serve from cache because there can always be a value which is
+    // somewhere along the range that isn't in the cache
+    public async getAllValues(range: FDBKeyRange, count?: number) {
+        return (await this.getAllRecords(range, count)).map((r) => r.value)
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-storing-a-record-into-an-object-store
-    public storeRecord(
+    public async storeRecord(
         newRecord: Record,
         noOverwrite: boolean,
         rollbackLog?: RollbackLog
@@ -90,7 +193,7 @@ class ObjectStore {
         if (this.keyPath !== null) {
             const key = extractKey(this.keyPath, newRecord.value).key
             if (key !== undefined) {
-                newRecord.key = key
+                newRecord.key = key as Key
             }
         }
 
@@ -129,17 +232,24 @@ class ObjectStore {
                         identifier = remainingKeyPath.slice(0, i)
                         remainingKeyPath = remainingKeyPath.slice(i + 1)
 
-                        if (!Object.hasOwn(object, identifier)) {
-                            object[identifier] = {}
+                        if (
+                            object !== null &&
+                            !Object.hasOwn(object, identifier)
+                        ) {
+                            ;(object as { [key: string]: unknown })[
+                                identifier
+                            ] = {}
                         }
 
-                        object = object[identifier]
+                        object = (object as { [key: string]: unknown })[
+                            identifier
+                        ]
                     }
                 }
 
                 identifier = remainingKeyPath
-
-                object[identifier] = newRecord.key
+                ;(object as { [key: string]: unknown })[identifier] =
+                    newRecord.key
             }
         } else if (
             this.keyGenerator !== null &&
@@ -148,8 +258,24 @@ class ObjectStore {
             this.keyGenerator.setIfLarger(newRecord.key)
         }
 
-        const existingRecord = this.records.get(newRecord.key)
-        if (existingRecord) {
+        let existingRecord: unknown | undefined = this.records.get(
+            newRecord.key
+        )
+        if (!existingRecord) {
+            existingRecord = await call<CountMethod>(
+                this.rawDatabase._port,
+                "executeReadMethod",
+                {
+                    dbName: this.rawDatabase.name,
+                    store: this.name,
+                    call: {
+                        method: "count",
+                        params: { query: newRecord.key as IDBValidKey },
+                    },
+                }
+            )
+        }
+        if (existingRecord === undefined) {
             if (noOverwrite) {
                 throw new ConstraintError()
             }
@@ -208,8 +334,12 @@ class ObjectStore {
         }
     }
 
-    public count(range: FDBKeyRange) {
+    public count(range?: FDBKeyRange) {
         let count = 0
+
+        // getAllKeys
+
+        this.getAllKeys(range)
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const _record of this.records.values(range)) {
