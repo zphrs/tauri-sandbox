@@ -85,6 +85,18 @@ describe("indexedDB good path", async () => {
         expect(data).toStrictEqual(customerData[0])
     })
 
+    test("customers count", async () => {
+        const tx = db.transaction("customers", "readonly")
+        const store = tx.objectStore("customers")
+        const len = await new Promise((res) => {
+            const et = store.count()
+            et.onsuccess = () => {
+                res(et.result)
+            }
+        })
+        expect(len).toBe(2)
+    })
+
     test("get bill through index", async () => {
         const tx = db.transaction("customers", "readonly")
         const objStore = tx.objectStore("customers")

@@ -16,8 +16,8 @@ export type Get = Notification<
 export type GetAll = Notification<
     "getAll",
     {
-        query: SerializedQuery
-        count: number
+        query?: SerializedQuery
+        count?: number
     }
 >
 
@@ -32,7 +32,7 @@ export type GetAllKeys = Notification<
     "getAllKeys",
     {
         query?: SerializedQuery
-        count: number
+        count?: number
     }
 >
 
@@ -46,8 +46,8 @@ export type Count = Notification<
 export type GetAllWithKeys = Notification<
     "getAllWithKeys",
     {
-        query: SerializedQuery
-        count: number
+        query?: SerializedQuery
+        count?: number
     }
 >
 
@@ -178,7 +178,10 @@ function methodToRequest(
         }
         case "getAll": {
             const { query, count } = call.params
-            return objStore.getAll(deserializeQuery(query), count)
+            return objStore.getAll(
+                query !== undefined ? deserializeQuery(query) : query,
+                count
+            )
         }
         case "getKey": {
             const { query } = call.params
@@ -187,7 +190,7 @@ function methodToRequest(
         case "getAllKeys": {
             const { query, count } = call.params
             return objStore.getAllKeys(
-                query !== undefined ? deserializeQuery(query) : undefined,
+                query !== undefined ? deserializeQuery(query) : null,
                 count
             )
         }

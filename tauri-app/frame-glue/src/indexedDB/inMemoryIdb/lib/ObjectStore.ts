@@ -103,7 +103,7 @@ class ObjectStore {
             // need to get `count` values for the case that all the cached
             // keys in the range are greater than all fetched keys
             // in the range
-            count,
+            count: Number.isFinite(count) ? count : undefined,
         })
         const cachedRecords: Record[] = []
         for (const record of this.records.values(range)) {
@@ -334,19 +334,10 @@ class ObjectStore {
         }
     }
 
-    public count(range?: FDBKeyRange) {
-        let count = 0
-
+    public async count(range?: FDBKeyRange) {
         // getAllKeys
 
-        this.getAllKeys(range)
-
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for (const _record of this.records.values(range)) {
-            count += 1
-        }
-
-        return count
+        return (await this.getAllKeys(range)).length
     }
 }
 
