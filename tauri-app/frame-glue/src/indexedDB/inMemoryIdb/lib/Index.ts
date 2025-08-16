@@ -1,4 +1,11 @@
 import { FDBKeyRange, FDBTransaction } from "../"
+import { call } from "../../../rpcOverPorts"
+import type {
+    ExecuteReadMethod,
+    GetAllRecordsFromIndexMethod,
+    Read,
+} from "../../methods/readFromStore"
+import cmp from "./cmp"
 
 import { ConstraintError } from "./errors"
 import extractKey from "./extractKey"
@@ -43,15 +50,20 @@ class Index {
     }
 
     // http://w3c.github.io/IndexedDB/#retrieve-multiple-referenced-values-from-an-index
-    public getAllKeys(range: FDBKeyRange, count?: number) {
+    public async getAllKeys(range: FDBKeyRange, count?: number) {
         if (count === undefined || count === 0) {
             count = Infinity
         }
 
-        const records = []
-        for (const record of this.records.values(range)) {
-            records.push(structuredClone(record.value))
-            if (records.length >= count) {
+        const records: Record[] = await this.getAllRecords(
+            range instanceof FDBKeyRange ? range : FDBKeyRange.only(range),
+            count
+        )
+
+        const out = []
+        for (const record of records) {
+            out.push(structuredClone(record.value as Key))
+            if (out.length >= count) {
                 break
             }
         }
@@ -60,42 +72,153 @@ class Index {
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#index-referenced-value-retrieval-operation
-    public getValue(key: FDBKeyRange | Key) {
-        const record = this.records.get(key)
+    public async getValue(key: FDBKeyRange | Key) {
+        const record: Record | undefined = (
+            await this.getAllRecords(
+                key instanceof FDBKeyRange ? key : FDBKeyRange.only(key),
+                1
+            )
+        )[0]
 
-        // can treat it like a key because in index
-        return record !== undefined
-            ? this.rawObjectStore.getValue(record.value as Key)
-            : undefined
+        const foundValue =
+            record !== undefined
+                ? await this.rawObjectStore.getValue(record.value as Key)
+                : undefined
+
+        return foundValue
     }
 
-    // http://w3c.github.io/IndexedDB/#retrieve-multiple-referenced-values-from-an-index
-    public getAllValues(range: FDBKeyRange, count?: number) {
+    private async executeReadMethod<
+        Method extends ExecuteReadMethod<Read, unknown>
+    >(
+        method: Method["req"]["params"]["call"]["method"],
+        params: Method["req"]["params"]["call"]["params"]
+    ) {
+        const readCall = { method, params } as Method["req"]["params"]["call"]
+        return await call<Method>(
+            this.rawObjectStore.rawDatabase._port,
+            "executeReadMethod",
+            {
+                params: {
+                    dbName: this.rawObjectStore.rawDatabase.name,
+                    store: this.rawObjectStore.name,
+                    call: readCall,
+                },
+                transferableObjects: [],
+            }
+        )
+    }
+
+    private async getAllRecords(range: FDBKeyRange, count: number | undefined) {
         if (count === undefined || count === 0) {
             count = Infinity
         }
 
-        const records = []
+        const kvPromise = this.executeReadMethod<GetAllRecordsFromIndexMethod>(
+            "getAllRecordsFromIndex",
+            {
+                indexName: this.name,
+                query: range,
+                count: Number.isFinite(count) ? count : undefined,
+            }
+        )
+
+        const cachedRecords: Record[] = []
+
         for (const record of this.records.values(range)) {
-            records.push(this.rawObjectStore.getValue(record.value as Key))
-            if (records.length >= count) {
+            cachedRecords.push(structuredClone(record))
+            if (cachedRecords.length >= count) {
                 break
             }
         }
 
-        return records
+        // starts above and awaits here because the RPC
+        // executes on its own, so we can parallelize the fetches
+        const [values, keys] = await kvPromise
+        // above are objectStore records; need to get converted into index records
+        const fetchedRecords = keys
+            .flatMap((k, i) => {
+                const inlineRecord = { key: k, value: values[i] }
+                return this.convertRecordToIndexRecord(inlineRecord, true)
+            })
+            .filter((v) => !this.rawObjectStore.records.modified(v.value))
+        console.log({ cachedRecords, fetchedRecords })
+
+        // mergesort
+        const out: Record[] = []
+        let i = 0,
+            j = 0
+        while (
+            fetchedRecords.length > i &&
+            cachedRecords.length > j &&
+            out.length < count
+        ) {
+            switch (cmp(fetchedRecords[i].key, cachedRecords[j].key)) {
+                case -1: {
+                    // To avoid bloating cache, we do not update the cache
+                    // with records from the fetched records
+                    out.push(fetchedRecords[i++])
+                    break
+                }
+                case 1: {
+                    out.push(cachedRecords[j++])
+                    break
+                }
+                case 0: {
+                    out.push(fetchedRecords[i++])
+                    out.push(cachedRecords[j++])
+                }
+            }
+        }
+        if (out.length === count) {
+            return out
+        }
+        if (fetchedRecords.length > i) {
+            out.push(...fetchedRecords.slice(i, i + (count - out.length)))
+        }
+        if (cachedRecords.length > j) {
+            out.push(...cachedRecords.slice(j, j + (count - out.length)))
+        }
+        console.log("Returning from records:", out)
+        return out
     }
 
-    // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-storing-a-record-into-an-object-store (step 7)
-    public storeRecord(newRecord: Record) {
+    // http://w3c.github.io/IndexedDB/#retrieve-multiple-referenced-values-from-an-index
+    public async getAllValues(range: FDBKeyRange, count?: number) {
+        if (count === undefined || count === 0) {
+            count = Infinity
+        }
+
+        const records: Record[] = await this.getAllRecords(
+            range instanceof FDBKeyRange ? range : FDBKeyRange.only(range),
+            count
+        )
+
+        const out = []
+        for (const record of records) {
+            out.push(await this.rawObjectStore.getValue(record.value as Key))
+            if (out.length >= count) {
+                break
+            }
+        }
+
+        return out
+    }
+
+    private convertRecordToIndexRecord(
+        record: Record,
+        skipUniquenessVerification: boolean = false
+    ) {
+        console.log("HERE1")
+
         let indexKey
         try {
-            indexKey = extractKey(this.keyPath, newRecord.value).key
+            indexKey = extractKey(this.keyPath, record.value).key
         } catch (err: unknown) {
             const error = err as DOMException
             if (error.name === "DataError") {
                 // Invalid key is not an actual error, just means we do not store an entry in this index
-                return
+                return []
             }
 
             throw err
@@ -106,7 +229,7 @@ class Index {
                 valueToKey(indexKey)
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
-                return
+                return []
             }
         } else {
             // remove any elements from index key that are not valid keys and remove any duplicate elements from index
@@ -125,36 +248,52 @@ class Index {
             indexKey = keep
         }
 
-        if (!this.multiEntry || !Array.isArray(indexKey)) {
-            if (this.unique) {
-                const existingRecord = this.records.get(indexKey as Key)
-                if (existingRecord) {
-                    throw new ConstraintError()
-                }
-            }
-        } else {
-            if (this.unique) {
-                for (const individualIndexKey of indexKey) {
-                    const existingRecord = this.records.get(individualIndexKey)
+        if (!skipUniquenessVerification) {
+            if (!this.multiEntry || !Array.isArray(indexKey)) {
+                if (this.unique) {
+                    const existingRecord = this.records.get(indexKey as Key)
                     if (existingRecord) {
                         throw new ConstraintError()
+                    }
+                }
+            } else {
+                if (this.unique) {
+                    for (const individualIndexKey of indexKey) {
+                        const existingRecord =
+                            this.records.get(individualIndexKey)
+                        if (existingRecord) {
+                            throw new ConstraintError()
+                        }
                     }
                 }
             }
         }
 
         if (!this.multiEntry || !Array.isArray(indexKey)) {
-            this.records.add({
+            return {
                 key: indexKey as Key,
-                value: newRecord.key,
-            })
-        } else {
-            for (const individualIndexKey of indexKey) {
-                this.records.add({
-                    key: individualIndexKey,
-                    value: newRecord.key,
-                })
+                value: record.key,
             }
+        } else {
+            return indexKey.map((v) => {
+                return {
+                    key: v as Key,
+                    value: record.key,
+                }
+            })
+        }
+    }
+
+    // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-storing-a-record-into-an-object-store (step 7)
+    public storeRecord(newRecord: Record) {
+        console.log("STORING RECORD IN INDEX", this.name, newRecord)
+        const idxRecord = this.convertRecordToIndexRecord(newRecord)
+        if (Array.isArray(idxRecord)) {
+            for (const record of idxRecord) {
+                this.records.add(record)
+            }
+        } else {
+            this.records.add(idxRecord)
         }
     }
 

@@ -9,40 +9,55 @@ import { AbortError, VersionError } from "./lib/errors"
 import FakeEvent from "./lib/FakeEvent"
 import { queueTask } from "./lib/scheduling"
 import type { GetDbInfoMethod } from "../methods/GetDbInfo"
-import type { OpenIDBDatabaseMethod } from "../methods/OpenIDBDatabase"
+import type { OpenIDBDatabaseMethod } from "../methods"
+import ObjectStore from "./lib/ObjectStore"
+import Index from "./lib/Index"
+import type { UpgradeActions } from "../methods/OpenIDBDatabase"
+import type { DeleteDatabaseMethod } from "../methods/deleteDatabase"
+import type FDBTransaction from "./FDBTransaction"
 
-const waitForOthersClosedDelete = (
+const waitForOthersClosedDelete = async (
     databases: Map<string, Database>,
     name: string,
     openDatabases: FDBDatabase[],
-    cb: (err: Error | null) => void
+    cb: (err: Error | null) => void,
+    port: MessagePort
 ) => {
     const anyOpen = openDatabases.some((openDatabase2) => {
         return !openDatabase2._closed && !openDatabase2._closePending
     })
 
     if (anyOpen) {
-        queueTask(() =>
-            waitForOthersClosedDelete(databases, name, openDatabases, cb)
-        )
+        queueTask(async () => {
+            await waitForOthersClosedDelete(
+                databases,
+                name,
+                openDatabases,
+                cb,
+                port
+            )
+        })
         return
     }
 
+    await call<DeleteDatabaseMethod>(port, "deleteDatabase", { name })
     databases.delete(name)
 
     cb(null)
 }
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-deleting-a-database
-const deleteDatabase = (
+const deleteDatabase = async (
     databases: Map<string, Database>,
     name: string,
     request: FDBOpenDBRequest,
-    cb: (err: Error | null) => void
+    cb: (err: Error | null) => void,
+    port: MessagePort
 ) => {
     try {
         const db = databases.get(name)
         if (db === undefined) {
+            await call<DeleteDatabaseMethod>(port, "deleteDatabase", { name })
             cb(null)
             return
         }
@@ -75,7 +90,7 @@ const deleteDatabase = (
             request.dispatchEvent(event)
         }
 
-        waitForOthersClosedDelete(databases, name, openDatabases, cb)
+        waitForOthersClosedDelete(databases, name, openDatabases, cb, port)
     } catch (err) {
         cb(err instanceof Error ? err : new Error(String(err)))
     }
@@ -175,15 +190,6 @@ const runVersionchangeTransaction = (
             request.transaction = null
             // Let other complete event handlers run before continuing
             queueTask(() => {
-                call<OpenIDBDatabaseMethod>(
-                    connection._rawDatabase._port,
-                    "openDatabase",
-                    {
-                        name: connection.name,
-                        version: version,
-                        doOnUpgrade: transaction._upgradeActions,
-                    }
-                )
                 if (connection._closePending) {
                     cb(new AbortError())
                 } else {
@@ -243,6 +249,8 @@ const openDatabase = async (
             cb(null, connection)
         })
     } else {
+        const upgradeActions: UpgradeActions[] = []
+        await callOpenDatabase(connection, upgradeActions, request.transaction!)
         cb(null, connection)
     }
 }
@@ -261,34 +269,40 @@ class FDBFactory {
         const request = new FDBOpenDBRequest()
         request.source = null
 
-        queueTask(() => {
+        queueTask(async () => {
             const db = this._databases.get(name)
             const oldVersion = db !== undefined ? db.version : 0
 
-            deleteDatabase(this._databases, name, request, (err) => {
-                if (err) {
-                    request.error = new DOMException(err.message, err.name)
+            await deleteDatabase(
+                this._databases,
+                name,
+                request,
+                (err) => {
+                    if (err) {
+                        request.error = new DOMException(err.message, err.name)
+                        request.readyState = "done"
+
+                        const event = new FakeEvent("error", {
+                            bubbles: true,
+                            cancelable: true,
+                        })
+                        event.eventPath = []
+                        request.dispatchEvent(event)
+
+                        return
+                    }
+
+                    request.result = undefined
                     request.readyState = "done"
 
-                    const event = new FakeEvent("error", {
-                        bubbles: true,
-                        cancelable: true,
+                    const event2 = new FDBVersionChangeEvent("success", {
+                        newVersion: null,
+                        oldVersion,
                     })
-                    event.eventPath = []
-                    request.dispatchEvent(event)
-
-                    return
-                }
-
-                request.result = undefined
-                request.readyState = "done"
-
-                const event2 = new FDBVersionChangeEvent("success", {
-                    newVersion: null,
-                    oldVersion,
-                })
-                request.dispatchEvent(event2)
-            })
+                    request.dispatchEvent(event2)
+                },
+                this._port
+            )
         })
 
         return request
@@ -356,3 +370,44 @@ class FDBFactory {
 }
 
 export default FDBFactory
+export async function callOpenDatabase(
+    connection: FDBDatabase,
+    upgradeActions: UpgradeActions[],
+    openTransaction: FDBTransaction
+) {
+    const db = connection._rawDatabase
+    const res = await call<OpenIDBDatabaseMethod>(db._port, "openDatabase", {
+        name: connection.name,
+        version: connection.version,
+        doOnUpgrade: upgradeActions,
+    })
+    for (const storeData of res.objectStores) {
+        let store = db.rawObjectStores.get(storeData.name)
+        if (store === undefined) {
+            store = new ObjectStore(
+                db,
+                storeData.name,
+                storeData.parameters.keyPath ?? null,
+                storeData.parameters.autoIncrement ?? false
+            )
+
+            connection.objectStoreNames._push(storeData.name)
+            connection.objectStoreNames._sort()
+
+            db.rawObjectStores.set(storeData.name, store)
+        }
+        for (const index of storeData.indexes) {
+            const rawIndex = new Index(
+                store,
+                index.name,
+                index.keyPath,
+                index.parameters.multiEntry ?? false,
+                index.parameters.unique ?? false
+            )
+            // can immediately mark as initialized because
+            // at this point the store has no records stored
+            rawIndex.initialized = true
+            store?.rawIndexes.set(index.name, rawIndex)
+        }
+    }
+}

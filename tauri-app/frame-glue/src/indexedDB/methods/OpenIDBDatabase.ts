@@ -3,6 +3,7 @@ import {
     type Method,
     type Notification,
 } from "../../rpcOverPorts"
+import type { KeyPath } from "../inMemoryIdb/lib/types"
 import { performWriteOperation, type Write } from "./executeIDBTransaction"
 
 export type ObjectStoreUpgradeActions =
@@ -30,7 +31,17 @@ export type UpgradeActions =
 export type OpenIDBDatabaseMethod = Method<
     "openDatabase",
     { name: string; version?: number; doOnUpgrade: UpgradeActions[] },
-    { objectStores: { name: string; parameters: IDBObjectStoreParameters }[] }
+    {
+        objectStores: {
+            name: string
+            parameters: IDBObjectStoreParameters
+            indexes: {
+                name: string
+                parameters: IDBIndexParameters
+                keyPath: KeyPath
+            }[]
+        }[]
+    }
 >
 
 export const openedDbs: Record<string, IDBDatabase> = {}
@@ -87,6 +98,17 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                                 keyPath: store.keyPath,
                                 autoIncrement: store.autoIncrement,
                             },
+                            indexes: [...store.indexNames].map((name) => {
+                                const index = store.index(name)
+                                return {
+                                    name,
+                                    parameters: {
+                                        multiEntry: index.multiEntry,
+                                        unique: index.unique,
+                                    },
+                                    keyPath: index.keyPath,
+                                }
+                            }),
                         })
                     }
 

@@ -138,7 +138,7 @@ class FDBCursor {
     }
 
     // https://w3c.github.io/IndexedDB/#iterate-a-cursor
-    public _iterate(key?: Key, primaryKey?: Key): this | null {
+    public async _iterate(key?: Key, primaryKey?: Key): Promise<this | null> {
         if (this._range === undefined) throw new InvalidStateError()
         const sourceIsObjectStore = this.source instanceof FDBObjectStore
 
@@ -337,7 +337,7 @@ class FDBCursor {
                         throw new Error("This should never happen")
                     }
                     const value =
-                        this.source.objectStore._rawObjectStore.getValue(
+                        await this.source.objectStore._rawObjectStore.getValue(
                             foundRecord.value as Key
                         )
                     ;(this as unknown as FDBCursorWithValue).value =
@@ -449,10 +449,10 @@ class FDBCursor {
             this._request.readyState = "pending"
         }
         transaction._execRequestAsync({
-            operation: () => {
+            operation: async () => {
                 let result
                 for (let i = 0; i < count; i++) {
-                    result = this._iterate()
+                    result = await this._iterate()
 
                     // Not sure why this is needed
                     if (!result) {

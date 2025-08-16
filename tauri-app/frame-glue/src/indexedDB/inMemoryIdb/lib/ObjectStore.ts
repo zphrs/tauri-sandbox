@@ -3,7 +3,7 @@ import type {
     CountMethod,
     ExecuteReadMethod,
     GetAllKeysMethod,
-    GetAllWithKeysMethod,
+    GetAllRecordsMethod,
     Read,
 } from "../../methods/readFromStore"
 import FDBKeyRange from "../FDBKeyRange"
@@ -78,6 +78,7 @@ class ObjectStore {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-retrieving-a-value-from-an-object-store
     public async getValue(key: FDBKeyRange | Key) {
+        console.log("GETTING VALUE FROM STORE", this.name, key)
         let k: FDBKeyRange
         if (!(key instanceof FDBKeyRange)) {
             k = FDBKeyRange.only(key)
@@ -97,8 +98,8 @@ class ObjectStore {
             count = Infinity
         }
         const kvPromise = this.executeReadMethod<
-            GetAllWithKeysMethod | GetAllKeysMethod
-        >(ignoreValues ? "getAllKeys" : "getAllWithKeys", {
+            GetAllRecordsMethod | GetAllKeysMethod
+        >(ignoreValues ? "getAllKeys" : "getAllRecords", {
             query: range,
             // need to get `count` values for the case that all the cached
             // keys in the range are greater than all fetched keys
@@ -127,12 +128,14 @@ class ObjectStore {
         })
 
         // in case a key in the range is updated via a transaction
-        for (const record of fetchedRecords) {
-            const cachedValue = this.records.get(record.key)
-            if (cachedValue) {
-                record.value = cachedValue.value
-            }
-        }
+        // for (const record of fetchedRecords) {
+        //     const cachedValue = this.records.get(record.key)
+        //     if (cachedValue) {
+        //         record.value = cachedValue.value
+        //     }
+        // }
+
+        console.log({ fetchedRecords, cachedRecords })
 
         // mergesort
         const out: Record[] = []
@@ -258,11 +261,10 @@ class ObjectStore {
             this.keyGenerator.setIfLarger(newRecord.key)
         }
 
-        let existingRecord: unknown | undefined = this.records.get(
-            newRecord.key
-        )
-        if (!existingRecord) {
-            existingRecord = await call<CountMethod>(
+        let recordExists: boolean =
+            this.records.get(newRecord.key) !== undefined
+        if (!recordExists) {
+            const ct = await call<CountMethod>(
                 this.rawDatabase._port,
                 "executeReadMethod",
                 {
@@ -274,13 +276,17 @@ class ObjectStore {
                     },
                 }
             )
+            recordExists = ct !== 0
         }
-        if (existingRecord === undefined) {
+        if (recordExists) {
             if (noOverwrite) {
+                console.log("\nWOW SCARYYYY", recordExists, "\n")
                 throw new ConstraintError()
             }
             this.deleteRecord(newRecord.key, rollbackLog)
         }
+
+        console.log("Adding record:", newRecord)
 
         this.records.add(newRecord)
 

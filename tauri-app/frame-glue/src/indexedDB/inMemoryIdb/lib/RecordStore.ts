@@ -11,6 +11,13 @@ import type { Key, Record } from "./types"
 
 class RecordStore {
     private records: Record[] = []
+    private keyModificationSet: RecordStore | undefined
+
+    constructor(isModificationSet: boolean = false) {
+        if (!isModificationSet) {
+            this.keyModificationSet = new RecordStore(true)
+        }
+    }
 
     public get(key: Key | FDBKeyRange) {
         if (key instanceof FDBKeyRange) {
@@ -18,6 +25,21 @@ class RecordStore {
         }
 
         return getByKey(this.records, key)
+    }
+    // do at either abort or complete of transaction
+    public cleanupAfterCompletedTransaction() {
+        this.keyModificationSet!.clear(false)
+    }
+    // set operation works by a delete followed by an add so we only need to
+    // call this function internally within the set and delete operations
+    private addToModifications(record: Record) {
+        // clone key just to be safe
+        const r = { key: structuredClone(record.key), value: undefined }
+        this.keyModificationSet!.set(r)
+    }
+
+    public modified(key: Key) {
+        return this.keyModificationSet!.get(key) !== undefined
     }
 
     public add(newRecord: Record) {
@@ -46,7 +68,30 @@ class RecordStore {
                 }
             }
         }
+        this.addToModifications(newRecord)
+        this.records.splice(i, 0, newRecord)
+        console.log(this.records)
+    }
+    // only used in addToModifications
+    private set(newRecord: Record) {
+        // Find where to put it so it's sorted by key
+        let i
+        if (this.records.length === 0) {
+            i = 0
+        } else {
+            i = getIndexByKeyGTE(this.records, newRecord.key)
 
+            if (i === -1) {
+                // If no matching key, add to end
+                i = this.records.length
+            } else {
+                // If matching key, update
+                if (cmp(this.records[i].key, newRecord.key) === 0) {
+                    this.records[i].value = newRecord.value
+                    return
+                }
+            }
+        }
         this.records.splice(i, 0, newRecord)
     }
 
@@ -63,6 +108,9 @@ class RecordStore {
             }
             deletedRecords.push(this.records[idx])
             this.records.splice(idx, 1)
+        }
+        for (const record of deletedRecords) {
+            this.addToModifications(record)
         }
         return deletedRecords
     }
@@ -85,9 +133,15 @@ class RecordStore {
         return deletedRecords
     }
 
-    public clear() {
+    public clear(recordTombstones: boolean = true) {
         const deletedRecords = this.records.slice()
         this.records = []
+        if (recordTombstones) {
+            for (const record of deletedRecords) {
+                this.addToModifications(record)
+            }
+        }
+
         return deletedRecords
     }
 

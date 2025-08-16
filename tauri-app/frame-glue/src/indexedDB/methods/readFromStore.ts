@@ -43,9 +43,36 @@ export type Count = Notification<
     }
 >
 
-export type GetAllWithKeys = Notification<
-    "getAllWithKeys",
+export type GetAllRecords = Notification<
+    "getAllRecords",
     {
+        query?: SerializedQuery
+        count?: number
+    }
+>
+
+export type GetAllRecordsFromIndex = Notification<
+    "getAllRecordsFromIndex",
+    {
+        indexName: string
+        query?: SerializedQuery
+        count?: number
+    }
+>
+
+export type GetAllKeysFromIndex = Notification<
+    "getAllKeysFromIndex",
+    {
+        indexName: string
+        query?: SerializedQuery
+        count?: number
+    }
+>
+
+export type GetAllFromIndex = Notification<
+    "getAllFromIndex",
+    {
+        indexName: string
         query?: SerializedQuery
         count?: number
     }
@@ -64,17 +91,35 @@ export type Read =
     | GetKey
     | GetAllKeys
     | Count
-    | GetAllWithKeys
+    | GetAllRecords
     | GetWithKey
+    | GetAllKeysFromIndex
+    | GetAllFromIndex
+    | GetAllRecordsFromIndex
 
 export type GetMethod = ExecuteReadMethod<Get, unknown>
 export type GetAllMethod = ExecuteReadMethod<GetAll, unknown[]>
 export type GetKeyMethod = ExecuteReadMethod<GetKey, IDBValidKey | undefined>
 export type GetAllKeysMethod = ExecuteReadMethod<GetAllKeys, IDBValidKey[]>
 export type CountMethod = ExecuteReadMethod<Count, number>
-export type GetAllWithKeysMethod = ExecuteReadMethod<
-    GetAllWithKeys,
+export type GetAllRecordsMethod = ExecuteReadMethod<
+    GetAllRecords,
     [GetAllMethod["res"]["result"], GetAllKeysMethod["res"]["result"]]
+>
+export type GetAllKeysFromIndexMethod = ExecuteReadMethod<
+    GetAllKeysFromIndex,
+    IDBValidKey[]
+>
+export type GetAllFromIndexMethod = ExecuteReadMethod<
+    GetAllFromIndex,
+    unknown[]
+>
+export type GetAllRecordsFromIndexMethod = ExecuteReadMethod<
+    GetAllRecordsFromIndex,
+    [
+        GetAllFromIndexMethod["res"]["result"],
+        GetAllKeysFromIndexMethod["res"]["result"]
+    ]
 >
 
 export type GetWithKeyMethod = ExecuteReadMethod<
@@ -100,6 +145,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
         "executeReadMethod",
         async (req) => {
             const { call, dbName, store } = req
+            console.log(call, dbName, store)
             let db: IDBDatabase | undefined = openedDbs[`${docId}:${dbName}`]
             if (db === undefined) {
                 const dbs = await indexedDB.databases()
@@ -124,7 +170,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                             return []
                         case "count":
                             return 0
-                        case "getAllWithKeys":
+                        case "getAllRecords":
                             return [[], []]
                         case "getWithKey":
                             return [undefined, undefined]
@@ -134,7 +180,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
             const tx = db.transaction(store, "readonly")
 
             const objStore = tx.objectStore(store)
-            if (call.method === "getAllWithKeys") {
+            if (call.method === "getAllRecords") {
                 const req1 = methodToRequest(
                     {
                         method: "getAll",
@@ -160,6 +206,19 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                     objStore
                 )
                 return Promise.all([req1, req2].map(requestToPromise))
+            } else if (call.method === "getAllRecordsFromIndex") {
+                const req1 = methodToRequest(
+                    {
+                        method: "getAllFromIndex",
+                        params: call.params,
+                    },
+                    objStore
+                )
+                const req2 = methodToRequest(
+                    { method: "getAllKeysFromIndex", params: call.params },
+                    objStore
+                )
+                return Promise.all([req1, req2].map(requestToPromise))
             } else {
                 const request = methodToRequest(call, objStore)
                 return requestToPromise(request)
@@ -168,13 +227,13 @@ export function handleReadMethod(port: MessagePort, docId: string) {
     )
 }
 function methodToRequest(
-    call: Exclude<Read, GetAllWithKeys | GetWithKey>,
+    call: Exclude<Read, GetAllRecords | GetWithKey | GetAllRecordsFromIndex>,
     objStore: IDBObjectStore
 ) {
     switch (call.method) {
         case "get": {
             const { query } = call.params
-            return objStore.get(deserializeQuery(query))
+            return objStore.get(deserializeQuery(query)!)
         }
         case "getAll": {
             const { query, count } = call.params
@@ -185,12 +244,12 @@ function methodToRequest(
         }
         case "getKey": {
             const { query } = call.params
-            return objStore.getKey(deserializeQuery(query))
+            return objStore.getKey(deserializeQuery(query)!)
         }
         case "getAllKeys": {
             const { query, count } = call.params
             return objStore.getAllKeys(
-                query !== undefined ? deserializeQuery(query) : null,
+                query ? deserializeQuery(query) : null,
                 count
             )
         }
@@ -199,6 +258,19 @@ function methodToRequest(
             return objStore.count(
                 query === undefined ? undefined : deserializeQuery(query)
             )
+        }
+        case "getAllKeysFromIndex": {
+            const { indexName, query, count } = call.params
+            const index = objStore.index(indexName)
+            return index.getAllKeys(
+                query ? deserializeQuery(query) : null,
+                count
+            )
+        }
+        case "getAllFromIndex": {
+            const { indexName, query, count } = call.params
+            const index = objStore.index(indexName)
+            return index.getAll(query ? deserializeQuery(query) : null, count)
         }
     }
 }

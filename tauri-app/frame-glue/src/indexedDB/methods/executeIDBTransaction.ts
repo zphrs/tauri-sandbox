@@ -76,9 +76,7 @@ export function handleExecuteIDBTransactionMethod(
             const tx = db.transaction(Object.keys(txs), "readwrite")
             for (const storeName in txs) {
                 const changes = txs[storeName]
-                const store: IDBObjectStore = tx.objectStore(
-                    `${storeName}:main`
-                )
+                const store: IDBObjectStore = tx.objectStore(storeName)
 
                 for (const change of changes) {
                     performWriteOperation(change, store)

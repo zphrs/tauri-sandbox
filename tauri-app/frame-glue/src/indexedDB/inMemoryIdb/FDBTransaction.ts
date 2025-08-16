@@ -1,10 +1,16 @@
-import type { Write, WriteLog } from "../methods/executeIDBTransaction"
+import { call } from "../../rpcOverPorts"
+import type {
+    ExecuteIDBTransactionMethod,
+    Write,
+    WriteLog,
+} from "../methods/executeIDBTransaction"
 import type {
     ObjectStoreUpgradeActions,
     UpgradeActions,
 } from "../methods/OpenIDBDatabase"
 import type FDBCursor from "./FDBCursor"
 import FDBDatabase from "./FDBDatabase"
+import { callOpenDatabase } from "./FDBFactory"
 import type FDBIndex from "./FDBIndex"
 import FDBObjectStore from "./FDBObjectStore"
 import FDBRequest from "./FDBRequest"
@@ -30,7 +36,7 @@ class FDBTransaction extends FakeEventTarget {
     public _state: "active" | "inactive" | "committing" | "finished" = "active"
     public _started = false
     public _rollbackLog: RollbackLog = []
-    public _writeActions: WriteLog
+    public _writeActions: WriteLog | undefined
     public _upgradeActions: UpgradeActions[] = []
     public _objectStoresCache: Map<string, FDBObjectStore> = new Map()
 
@@ -98,6 +104,10 @@ class FDBTransaction extends FakeEventTarget {
             }
         }
 
+        this._upgradeActions = []
+
+        this._writeActions = undefined
+
         queueTask(() => {
             const event = new FakeEvent("abort", {
                 bubbles: true,
@@ -148,7 +158,7 @@ class FDBTransaction extends FakeEventTarget {
                           doOnUpgrade: (ObjectStoreUpgradeActions | Write)[]
                       }
                   ).doOnUpgrade
-                : this._writeActions.ops[name]!
+                : this._writeActions!.ops[name]!
 
         const objectStore2 = new FDBObjectStore(
             this,
@@ -279,7 +289,22 @@ class FDBTransaction extends FakeEventTarget {
         if (this._state !== "finished") {
             // Either aborted or committed already
             this._state = "finished"
-
+            // clear all modifications for the next transaction
+            for (const objectStore of this._objectStoresCache.values()) {
+                objectStore._rawObjectStore.records.cleanupAfterCompletedTransaction()
+                for (const index of objectStore._indexesCache.values()) {
+                    index._rawIndex.records.cleanupAfterCompletedTransaction()
+                }
+            }
+            if (this._upgradeActions.length !== 0) {
+                await callOpenDatabase(this.db, this._upgradeActions)
+            } else if (this._writeActions) {
+                await call<ExecuteIDBTransactionMethod>(
+                    this.db._rawDatabase._port,
+                    "executeIDBTransactionMethod",
+                    this._writeActions
+                )
+            }
             if (!this.error) {
                 const event = new FakeEvent("complete")
                 this.dispatchEvent(event)

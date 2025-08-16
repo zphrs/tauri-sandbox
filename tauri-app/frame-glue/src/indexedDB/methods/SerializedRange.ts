@@ -9,9 +9,10 @@ export type SerializedQuery =
 
 export function deserializeQuery(
     range: SerializedQuery
-): IDBValidKey | IDBKeyRange {
+): IDBValidKey | IDBKeyRange | undefined {
     if (typeof range === "object" && "lower" in range) {
         const { lower, upper, lowerOpen, upperOpen } = range
+        if (lower === undefined && upper === undefined) return undefined
         return IDBKeyRange.bound(lower, upper, lowerOpen, upperOpen)
     }
     return range

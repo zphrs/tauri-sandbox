@@ -1,3 +1,5 @@
+import { call } from "../../rpcOverPorts"
+import type { CloseDatabaseMethod } from "../methods/closeDatabase"
 import FDBTransaction from "./FDBTransaction"
 import Database from "./lib/Database"
 import {
@@ -52,6 +54,11 @@ const closeConnection = (connection: FDBDatabase) => {
             connection._rawDatabase.connections.filter((otherConnection) => {
                 return connection !== otherConnection
             })
+        call<CloseDatabaseMethod>(
+            connection._rawDatabase._port,
+            "closeDatabase",
+            { name: connection.name }
+        )
     } else {
         queueTask(() => {
             closeConnection(connection)
@@ -135,8 +142,8 @@ class FDBDatabase extends FakeEventTarget {
         )
         this.objectStoreNames._push(name)
         this.objectStoreNames._sort()
-        transaction._scope.add(name)
         this._rawDatabase.rawObjectStores.set(name, rawObjectStore)
+        transaction._scope.add(name)
         transaction.objectStoreNames = new FakeDOMStringList(
             ...this.objectStoreNames
         )
