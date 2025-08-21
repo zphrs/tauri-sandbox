@@ -67,7 +67,7 @@ const deleteDatabase = async (
             (connection) => {
                 return !connection._closed && !connection._closePending
             },
-        ) as FDBDatabase[]
+        )
 
         for (const openDatabase2 of openDatabases) {
             if (!openDatabase2._closePending) {
@@ -112,7 +112,7 @@ const runVersionchangeTransaction = (
         (otherDatabase) => {
             return connection !== otherDatabase
         },
-    ) as FDBDatabase[]
+    )
 
     for (const openDatabase2 of openDatabases) {
         if (!openDatabase2._closed && !openDatabase2._closePending) {

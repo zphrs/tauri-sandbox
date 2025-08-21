@@ -1,5 +1,4 @@
 export declare class FetchEvent extends Event {
-    #private
     clientId: string | undefined
     resultingClientId: string | undefined
     request: Request

@@ -125,7 +125,7 @@ async function composite_blob_test(
 
         await promiseForTransaction(read_tx)
 
-        const diskBlobs = (read_req as IDBRequest<Blob[]>).result as Blob[]
+        const diskBlobs = (read_req as IDBRequest<Blob[]>).result
         const compositeBlob = new Blob(diskBlobs)
 
         if (mode === "fetch-blob-url") {

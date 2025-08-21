@@ -54,7 +54,7 @@ export class FetchEvent extends Event {
     }
 
     #respondWith(p: Promise<Response>) {
-        p.then(() => {
+        void p.then(() => {
             this.#res()
         })
     }

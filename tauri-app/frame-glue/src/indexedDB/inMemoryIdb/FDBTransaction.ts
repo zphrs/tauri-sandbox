@@ -158,7 +158,7 @@ class FDBTransaction extends FakeEventTarget {
                           doOnUpgrade: (ObjectStoreUpgradeActions | Write)[]
                       }
                   ).doOnUpgrade
-                : this._writeActions!.ops[name]!
+                : this._writeActions!.ops[name]
 
         const objectStore2 = new FDBObjectStore(
             this,

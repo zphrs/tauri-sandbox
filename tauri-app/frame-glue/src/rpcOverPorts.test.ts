@@ -59,5 +59,3 @@ describe("rpc over ports", () => {
         }
     })
 })
-
-const t: { a: unknown } = { b: "lol" }

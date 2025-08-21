@@ -29,13 +29,15 @@ describe("sw-passthrough-api", () => {
                 body: "test",
             }),
         })
-        handleProxiedFetchEvent(mainPort, async (event) => {
-            expect(fe.request.url).to.equal(event.request.url)
-            expect(fe.request.method).to.equal(event.request.method)
-            expect(await event.request.text()).to.equal("test")
-            event.respondWith(
-                new Promise((res) => res(new Response("success"))),
-            )
+        void handleProxiedFetchEvent(mainPort, (event) => {
+            void (async () => {
+                expect(fe.request.url).to.equal(event.request.url)
+                expect(fe.request.method).to.equal(event.request.method)
+                expect(await event.request.text()).to.equal("test")
+                event.respondWith(
+                    new Promise((res) => res(new Response("success"))),
+                )
+            })()
         })
         const res = await proxyFetchEvent(swPort, fe as FetchEvent)
         expect(await res.text()).to.equal("success")

@@ -44,7 +44,7 @@ describe("IDBCursor.continue exception order", () => {
             return
         }
 
-        cursor = nextCursorResult as IDBCursor
+        cursor = nextCursorResult
 
         // Wait for the transaction to become inactive
         await new Promise((resolve) => setTimeout(resolve, 0))

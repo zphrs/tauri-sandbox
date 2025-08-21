@@ -49,8 +49,8 @@ const valueToKey = (input: unknown, seen?: Set<object>): Key | Key[] => {
             arrayBuffer = input
             length = input.byteLength
         } else {
-            arrayBuffer = (input as ArrayBufferView<ArrayBufferLike>).buffer
-            offset = (input as ArrayBufferView<ArrayBufferLike>).byteOffset
+            arrayBuffer = (input).buffer
+            offset = (input).byteOffset
             length = input.byteLength
         }
 

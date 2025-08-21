@@ -86,7 +86,9 @@ export function handleRequests<M extends Method<string, unknown, unknown>>(
             resHasTransferableObjects ? res.transferableObjects : [],
         )
     }
-    port.addEventListener("message", handleMessage)
+    port.addEventListener("message", (e: MessageEvent<M["req"]>) => {
+        void handleMessage(e)
+    })
     port.start()
 }
 

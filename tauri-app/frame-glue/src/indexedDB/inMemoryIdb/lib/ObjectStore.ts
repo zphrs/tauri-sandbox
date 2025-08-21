@@ -275,7 +275,7 @@ class ObjectStore {
                     store: this.name,
                     call: {
                         method: "count",
-                        params: { query: newRecord.key as IDBValidKey },
+                        params: { query: newRecord.key },
                     },
                 },
             )
