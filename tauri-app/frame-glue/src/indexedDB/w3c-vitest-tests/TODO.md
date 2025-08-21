@@ -1,213 +1,213 @@
 The following test files are found in src/indexeddb/w3c-tests:
 
-- [x] abort-in-initial-upgradeneeded.any.js
+-   [x] abort-in-initial-upgradeneeded.any.js
 
 <!-- [ ] bindings-inject-keys-bypass.any.js
 [ ] bindings-inject-values-bypass.any.js:~~ not worth implementing, based on using setters incorrectly; messes with test suite -->
 
-- [x] blob-composite-blob-reads.any.js
-- [x] blob-contenttype.any.js
-- [x] blob-delete-objectstore-db.any.js
-- [x] blob-valid-after-abort.any.js
-- [x] blob-valid-after-deletion.any.js
-- [x] blob-valid-before-commit.any.js
-- [x] clone-before-keypath-eval.any.js
-- [x] close-in-upgradeneeded.any.js
-- [x] cursor-overloads.any.js
-- [x] delete-range.any.js
-- [x] delete-request-queue.any.js
-- [x] error-attributes.any.js
-- [/] event-dispatch-active-flag.any.js
-- [/] fire-error-event-exception.any.js
-- [/] fire-success-event-exception.any.js
-- [/] fire-upgradeneeded-event-exception.any.js
-- [x] get-databases.any.js
-- [x] globalscope-indexedDB-SameObject.any.js
-- [x] historical.any.js
-- [x] idb-binary-key-detached.any.js
-- [x] idb-binary-key-roundtrip.any.js
-- [x] idb-explicit-commit-throw.any.js
-- [x] idb-explicit-commit.any.js
-- [x] idb_binary_key_conversion.any.js
-- [x] idbcursor-advance-continue-async.any.js
-- [x] idbcursor-advance-exception-order.any.js
-- [x] idbcursor-advance-invalid.any.js
-- [x] idbcursor-advance.any.js
-- [x] idbcursor-continue-exception-order.any.js
-- [ ] idbcursor-continue.any.js
-- [ ] idbcursor-continuePrimaryKey-exception-order.any.js
-- [ ] idbcursor-continuePrimaryKey-exceptions.any.js
-- [ ] idbcursor-continuePrimaryKey.any.js
-- [ ] idbcursor-delete-exception-order.any.js
-- [ ] idbcursor-direction-index-keyrange.any.js
-- [ ] idbcursor-direction-index.any.js
-- [ ] idbcursor-direction-objectstore-keyrange.any.js
-- [ ] idbcursor-direction-objectstore.any.js
-- [ ] idbcursor-direction.any.js
-- [ ] idbcursor-iterating-update.any.js
-- [ ] idbcursor-key.any.js
-- [ ] idbcursor-primarykey.any.js
-- [ ] idbcursor-request-source.any.js
-- [ ] idbcursor-request.any.js
-- [ ] idbcursor-reused.any.js
-- [ ] idbcursor-source.any.js
-- [ ] idbcursor-update-exception-order.any.js
-- [ ] idbcursor_advance_index.any.js
-- [ ] idbcursor_advance_objectstore.any.js
-- [ ] idbcursor_continue_delete_objectstore.any.js
-- [ ] idbcursor_continue_index.any.js
-- [ ] idbcursor_continue_invalid.any.js
-- [ ] idbcursor_continue_objectstore.any.js
-- [ ] idbcursor_delete_index.any.js
-- [ ] idbcursor_delete_objectstore.any.js
-- [ ] idbcursor_iterating.any.js
-- [ ] idbcursor_update_index.any.js
-- [ ] idbcursor_update_objectstore.any.js
-- [ ] idbdatabase-createObjectStore-exception-order.any.js
-- [ ] idbdatabase-deleteObjectStore-exception-order.any.js
-- [ ] idbdatabase-transaction-exception-order.any.js
-- [ ] idbdatabase_close.any.js
-- [ ] idbdatabase_createObjectStore.any.js
-- [ ] idbdatabase_deleteObjectStore.any.js
-- [ ] idbdatabase_transaction.any.js
-- [ ] idbfactory-deleteDatabase-request-success.any.js
-- [ ] idbfactory-open-error-properties.any.js
-- [ ] idbfactory-open-request-error.any.js
-- [ ] idbfactory-open-request-success.any.js
-- [ ] idbfactory_cmp.any.js
-- [ ] idbfactory_deleteDatabase.any.js
-- [ ] idbfactory_open.any.js
-- [ ] idbindex-getAll-enforcerange.any.js
-- [ ] idbindex-getAllKeys-enforcerange.any.js
-- [ ] idbindex-multientry.any.js
-- [ ] idbindex-objectStore-SameObject.any.js
-- [ ] idbindex-query-exception-order.any.js
-- [ ] idbindex-rename-abort.any.js
-- [ ] idbindex-rename-errors.any.js
-- [ ] idbindex-rename.any.js
-- [ ] idbindex-request-source.any.js
-- [ ] idbindex_count.any.js
-- [ ] idbindex_get.any.js
-- [ ] idbindex_getAll-options.tentative.any.js
-- [ ] idbindex_getAll.any.js
-- [ ] idbindex_getAllKeys-options.tentative.any.js
-- [ ] idbindex_getAllKeys.any.js
-- [ ] idbindex_getAllRecords.tentative.any.js
-- [ ] idbindex_getKey.any.js
-- [ ] idbindex_indexNames.any.js
-- [ ] idbindex_keyPath.any.js
-- [ ] idbindex_openCursor.any.js
-- [ ] idbindex_openKeyCursor.any.js
-- [ ] idbindex_reverse_cursor.any.js
-- [ ] idbindex_tombstones.any.js
-- [ ] idbkeyrange-includes.any.js
-- [ ] idbkeyrange.any.js
-- [ ] idbkeyrange_incorrect.any.js
-- [ ] idbobjectstore-add-put-exception-order.any.js
-- [ ] idbobjectstore-clear-exception-order.any.js
-- [ ] idbobjectstore-delete-exception-order.any.js
-- [ ] idbobjectstore-deleteIndex-exception-order.any.js
-- [ ] idbobjectstore-getAll-enforcerange.any.js
-- [ ] idbobjectstore-getAllKeys-enforcerange.any.js
-- [ ] idbobjectstore-index-finished.any.js
-- [ ] idbobjectstore-query-exception-order.any.js
-- [ ] idbobjectstore-rename-abort.any.js
-- [ ] idbobjectstore-rename-errors.any.js
-- [ ] idbobjectstore-rename-store.any.js
-- [ ] idbobjectstore-request-source.any.js
-- [ ] idbobjectstore-transaction-SameObject.any.js
-- [ ] idbobjectstore_add.any.js
-- [ ] idbobjectstore_clear.any.js
-- [ ] idbobjectstore_count.any.js
-- [ ] idbobjectstore_createIndex.any.js
-- [ ] idbobjectstore_delete.any.js
-- [ ] idbobjectstore_deleteIndex.any.js
-- [ ] idbobjectstore_get.any.js
-- [ ] idbobjectstore_getAll-options.tentative.any.js
-- [ ] idbobjectstore_getAll.any.js
-- [ ] idbobjectstore_getAllKeys-options.tentative.any.js
-- [ ] idbobjectstore_getAllKeys.any.js
-- [ ] idbobjectstore_getAllRecords.tentative.any.js
-- [ ] idbobjectstore_getKey.any.js
-- [ ] idbobjectstore_index.any.js
-- [ ] idbobjectstore_keyPath.any.js
-- [ ] idbobjectstore_openCursor.any.js
-- [ ] idbobjectstore_openCursor_invalid.any.js
-- [ ] idbobjectstore_openKeyCursor.any.js
-- [ ] idbobjectstore_put.any.js
-- [ ] idbrequest-onupgradeneeded.any.js
-- [ ] idbrequest_error.any.js
-- [ ] idbrequest_result.any.js
-- [ ] idbtransaction-db-SameObject.any.js
-- [ ] idbtransaction-objectStore-exception-order.any.js
-- [ ] idbtransaction-objectStore-finished.any.js
-- [ ] idbtransaction-oncomplete.any.js
-- [ ] idbtransaction.any.js
-- [ ] idbtransaction_abort.any.js
-- [ ] idbtransaction_objectStoreNames.any.js
-- [ ] idbversionchangeevent.any.js
-- [ ] idlharness.any.js
-- [ ] index_sort_order.any.js
-- [ ] interleaved-cursors-large.any.js
-- [ ] interleaved-cursors-small.any.js
-- [ ] key-conversion-exceptions.any.js
-- [ ] key_invalid.any.js
-- [ ] key_valid.any.js
-- [ ] keygenerator.any.js
-- [ ] keyorder.any.js
-- [ ] keypath-exceptions.any.js
-- [ ] keypath-special-identifiers.any.js
-- [ ] keypath.any.js
-- [ ] keypath_invalid.any.js
-- [ ] keypath_maxsize.any.js
-- [ ] large-requests-abort.any.js
-- [ ] list_ordering.any.js
-- [ ] name-scopes.any.js
-- [ ] nested-cloning-basic.any.js
-- [ ] nested-cloning-large-multiple.any.js
-- [ ] nested-cloning-large.any.js
-- [ ] nested-cloning-small.any.js
-- [ ] objectstore_keyorder.any.js
-- [ ] open-request-queue.any.js
-- [ ] parallel-cursors-upgrade.any.js
-- [ ] reading-autoincrement-indexes-cursors.any.js
-- [ ] reading-autoincrement-indexes.any.js
-- [ ] reading-autoincrement-store-cursors.any.js
-- [ ] reading-autoincrement-store.any.js
-- [ ] request-abort-ordering.any.js
-- [ ] request-event-ordering-large-mixed-with-small-values.any.js
-- [ ] request-event-ordering-large-then-small-values.any.js
-- [ ] request-event-ordering-large-values.any.js
-- [ ] request-event-ordering-small-values.any.js
-- [ ] request_bubble-and-capture.any.js
-- [ ] storage-buckets.https.any.js
-- [ ] string-list-ordering.any.js
-- [ ] structured-clone-transaction-state.any.js
-- [ ] structured-clone.any.js
-- [ ] transaction-abort-generator-revert.any.js
-- [ ] transaction-abort-index-metadata-revert.any.js
-- [ ] transaction-abort-multiple-metadata-revert.any.js
-- [ ] transaction-abort-object-store-metadata-revert.any.js
-- [ ] transaction-abort-request-error.any.js
-- [ ] transaction-create_in_versionchange.any.js
-- [ ] transaction-deactivation-timing.any.js
-- [ ] transaction-lifetime-empty.any.js
-- [ ] transaction-lifetime.any.js
-- [ ] transaction-relaxed-durability.any.js
-- [ ] transaction-requestqueue.any.js
-- [ ] transaction-scheduling-across-connections.any.js
-- [ ] transaction-scheduling-across-databases.any.js
-- [ ] transaction-scheduling-mixed-scopes.any.js
-- [ ] transaction-scheduling-ordering.any.js
-- [ ] transaction-scheduling-ro-waits-for-rw.any.js
-- [ ] transaction-scheduling-rw-scopes.any.js
-- [ ] transaction-scheduling-within-database.any.js
-- [ ] transaction_bubble-and-capture.any.js
-- [ ] upgrade-transaction-deactivation-timing.any.js
-- [ ] upgrade-transaction-lifecycle-backend-aborted.any.js
-- [ ] upgrade-transaction-lifecycle-committed.any.js
-- [ ] upgrade-transaction-lifecycle-user-aborted.any.js
-- [ ] value.any.js
-- [ ] value_recursive.any.js
-- [ ] writer-starvation.any.js
-- [ ]
+-   [x] blob-composite-blob-reads.any.js
+-   [x] blob-contenttype.any.js
+-   [x] blob-delete-objectstore-db.any.js
+-   [x] blob-valid-after-abort.any.js
+-   [x] blob-valid-after-deletion.any.js
+-   [x] blob-valid-before-commit.any.js
+-   [x] clone-before-keypath-eval.any.js
+-   [x] close-in-upgradeneeded.any.js
+-   [x] cursor-overloads.any.js
+-   [x] delete-range.any.js
+-   [x] delete-request-queue.any.js
+-   [x] error-attributes.any.js
+-   [x] event-dispatch-active-flag.any.js
+-   [x] fire-error-event-exception.any.js
+-   [x] fire-success-event-exception.any.js
+-   [x] fire-upgradeneeded-event-exception.any.js
+-   [x] get-databases.any.js
+-   [x] globalscope-indexedDB-SameObject.any.js
+-   [x] historical.any.js
+-   [x] idb-binary-key-detached.any.js
+-   [x] idb-binary-key-roundtrip.any.js
+-   [x] idb-explicit-commit-throw.any.js
+-   [x] idb-explicit-commit.any.js
+-   [x] idb_binary_key_conversion.any.js
+-   [x] idbcursor-advance-continue-async.any.js
+-   [x] idbcursor-advance-exception-order.any.js
+-   [x] idbcursor-advance-invalid.any.js
+-   [x] idbcursor-advance.any.js
+-   [x] idbcursor-continue-exception-order.any.js
+-   [ ] idbcursor-continue.any.js
+-   [ ] idbcursor-continuePrimaryKey-exception-order.any.js
+-   [ ] idbcursor-continuePrimaryKey-exceptions.any.js
+-   [ ] idbcursor-continuePrimaryKey.any.js
+-   [ ] idbcursor-delete-exception-order.any.js
+-   [ ] idbcursor-direction-index-keyrange.any.js
+-   [ ] idbcursor-direction-index.any.js
+-   [ ] idbcursor-direction-objectstore-keyrange.any.js
+-   [ ] idbcursor-direction-objectstore.any.js
+-   [ ] idbcursor-direction.any.js
+-   [ ] idbcursor-iterating-update.any.js
+-   [ ] idbcursor-key.any.js
+-   [ ] idbcursor-primarykey.any.js
+-   [ ] idbcursor-request-source.any.js
+-   [ ] idbcursor-request.any.js
+-   [ ] idbcursor-reused.any.js
+-   [ ] idbcursor-source.any.js
+-   [ ] idbcursor-update-exception-order.any.js
+-   [ ] idbcursor_advance_index.any.js
+-   [ ] idbcursor_advance_objectstore.any.js
+-   [ ] idbcursor_continue_delete_objectstore.any.js
+-   [ ] idbcursor_continue_index.any.js
+-   [ ] idbcursor_continue_invalid.any.js
+-   [ ] idbcursor_continue_objectstore.any.js
+-   [ ] idbcursor_delete_index.any.js
+-   [ ] idbcursor_delete_objectstore.any.js
+-   [ ] idbcursor_iterating.any.js
+-   [ ] idbcursor_update_index.any.js
+-   [ ] idbcursor_update_objectstore.any.js
+-   [ ] idbdatabase-createObjectStore-exception-order.any.js
+-   [ ] idbdatabase-deleteObjectStore-exception-order.any.js
+-   [ ] idbdatabase-transaction-exception-order.any.js
+-   [ ] idbdatabase_close.any.js
+-   [ ] idbdatabase_createObjectStore.any.js
+-   [ ] idbdatabase_deleteObjectStore.any.js
+-   [ ] idbdatabase_transaction.any.js
+-   [ ] idbfactory-deleteDatabase-request-success.any.js
+-   [ ] idbfactory-open-error-properties.any.js
+-   [ ] idbfactory-open-request-error.any.js
+-   [ ] idbfactory-open-request-success.any.js
+-   [ ] idbfactory_cmp.any.js
+-   [ ] idbfactory_deleteDatabase.any.js
+-   [ ] idbfactory_open.any.js
+-   [ ] idbindex-getAll-enforcerange.any.js
+-   [ ] idbindex-getAllKeys-enforcerange.any.js
+-   [ ] idbindex-multientry.any.js
+-   [ ] idbindex-objectStore-SameObject.any.js
+-   [ ] idbindex-query-exception-order.any.js
+-   [ ] idbindex-rename-abort.any.js
+-   [ ] idbindex-rename-errors.any.js
+-   [ ] idbindex-rename.any.js
+-   [ ] idbindex-request-source.any.js
+-   [ ] idbindex_count.any.js
+-   [ ] idbindex_get.any.js
+-   [ ] idbindex_getAll-options.tentative.any.js
+-   [ ] idbindex_getAll.any.js
+-   [ ] idbindex_getAllKeys-options.tentative.any.js
+-   [ ] idbindex_getAllKeys.any.js
+-   [ ] idbindex_getAllRecords.tentative.any.js
+-   [ ] idbindex_getKey.any.js
+-   [ ] idbindex_indexNames.any.js
+-   [ ] idbindex_keyPath.any.js
+-   [ ] idbindex_openCursor.any.js
+-   [ ] idbindex_openKeyCursor.any.js
+-   [ ] idbindex_reverse_cursor.any.js
+-   [ ] idbindex_tombstones.any.js
+-   [ ] idbkeyrange-includes.any.js
+-   [ ] idbkeyrange.any.js
+-   [ ] idbkeyrange_incorrect.any.js
+-   [ ] idbobjectstore-add-put-exception-order.any.js
+-   [ ] idbobjectstore-clear-exception-order.any.js
+-   [ ] idbobjectstore-delete-exception-order.any.js
+-   [ ] idbobjectstore-deleteIndex-exception-order.any.js
+-   [ ] idbobjectstore-getAll-enforcerange.any.js
+-   [ ] idbobjectstore-getAllKeys-enforcerange.any.js
+-   [ ] idbobjectstore-index-finished.any.js
+-   [ ] idbobjectstore-query-exception-order.any.js
+-   [ ] idbobjectstore-rename-abort.any.js
+-   [ ] idbobjectstore-rename-errors.any.js
+-   [ ] idbobjectstore-rename-store.any.js
+-   [ ] idbobjectstore-request-source.any.js
+-   [ ] idbobjectstore-transaction-SameObject.any.js
+-   [ ] idbobjectstore_add.any.js
+-   [ ] idbobjectstore_clear.any.js
+-   [ ] idbobjectstore_count.any.js
+-   [ ] idbobjectstore_createIndex.any.js
+-   [ ] idbobjectstore_delete.any.js
+-   [ ] idbobjectstore_deleteIndex.any.js
+-   [ ] idbobjectstore_get.any.js
+-   [ ] idbobjectstore_getAll-options.tentative.any.js
+-   [ ] idbobjectstore_getAll.any.js
+-   [ ] idbobjectstore_getAllKeys-options.tentative.any.js
+-   [ ] idbobjectstore_getAllKeys.any.js
+-   [ ] idbobjectstore_getAllRecords.tentative.any.js
+-   [ ] idbobjectstore_getKey.any.js
+-   [ ] idbobjectstore_index.any.js
+-   [ ] idbobjectstore_keyPath.any.js
+-   [ ] idbobjectstore_openCursor.any.js
+-   [ ] idbobjectstore_openCursor_invalid.any.js
+-   [ ] idbobjectstore_openKeyCursor.any.js
+-   [ ] idbobjectstore_put.any.js
+-   [ ] idbrequest-onupgradeneeded.any.js
+-   [ ] idbrequest_error.any.js
+-   [ ] idbrequest_result.any.js
+-   [ ] idbtransaction-db-SameObject.any.js
+-   [ ] idbtransaction-objectStore-exception-order.any.js
+-   [ ] idbtransaction-objectStore-finished.any.js
+-   [ ] idbtransaction-oncomplete.any.js
+-   [ ] idbtransaction.any.js
+-   [ ] idbtransaction_abort.any.js
+-   [ ] idbtransaction_objectStoreNames.any.js
+-   [ ] idbversionchangeevent.any.js
+-   [ ] idlharness.any.js
+-   [ ] index_sort_order.any.js
+-   [ ] interleaved-cursors-large.any.js
+-   [ ] interleaved-cursors-small.any.js
+-   [ ] key-conversion-exceptions.any.js
+-   [ ] key_invalid.any.js
+-   [ ] key_valid.any.js
+-   [ ] keygenerator.any.js
+-   [ ] keyorder.any.js
+-   [ ] keypath-exceptions.any.js
+-   [ ] keypath-special-identifiers.any.js
+-   [ ] keypath.any.js
+-   [ ] keypath_invalid.any.js
+-   [ ] keypath_maxsize.any.js
+-   [ ] large-requests-abort.any.js
+-   [ ] list_ordering.any.js
+-   [ ] name-scopes.any.js
+-   [ ] nested-cloning-basic.any.js
+-   [ ] nested-cloning-large-multiple.any.js
+-   [ ] nested-cloning-large.any.js
+-   [ ] nested-cloning-small.any.js
+-   [ ] objectstore_keyorder.any.js
+-   [ ] open-request-queue.any.js
+-   [ ] parallel-cursors-upgrade.any.js
+-   [ ] reading-autoincrement-indexes-cursors.any.js
+-   [ ] reading-autoincrement-indexes.any.js
+-   [ ] reading-autoincrement-store-cursors.any.js
+-   [ ] reading-autoincrement-store.any.js
+-   [ ] request-abort-ordering.any.js
+-   [ ] request-event-ordering-large-mixed-with-small-values.any.js
+-   [ ] request-event-ordering-large-then-small-values.any.js
+-   [ ] request-event-ordering-large-values.any.js
+-   [ ] request-event-ordering-small-values.any.js
+-   [ ] request_bubble-and-capture.any.js
+-   [ ] storage-buckets.https.any.js
+-   [ ] string-list-ordering.any.js
+-   [ ] structured-clone-transaction-state.any.js
+-   [ ] structured-clone.any.js
+-   [ ] transaction-abort-generator-revert.any.js
+-   [ ] transaction-abort-index-metadata-revert.any.js
+-   [ ] transaction-abort-multiple-metadata-revert.any.js
+-   [ ] transaction-abort-object-store-metadata-revert.any.js
+-   [ ] transaction-abort-request-error.any.js
+-   [ ] transaction-create_in_versionchange.any.js
+-   [ ] transaction-deactivation-timing.any.js
+-   [ ] transaction-lifetime-empty.any.js
+-   [ ] transaction-lifetime.any.js
+-   [ ] transaction-relaxed-durability.any.js
+-   [ ] transaction-requestqueue.any.js
+-   [ ] transaction-scheduling-across-connections.any.js
+-   [ ] transaction-scheduling-across-databases.any.js
+-   [ ] transaction-scheduling-mixed-scopes.any.js
+-   [ ] transaction-scheduling-ordering.any.js
+-   [ ] transaction-scheduling-ro-waits-for-rw.any.js
+-   [ ] transaction-scheduling-rw-scopes.any.js
+-   [ ] transaction-scheduling-within-database.any.js
+-   [ ] transaction_bubble-and-capture.any.js
+-   [ ] upgrade-transaction-deactivation-timing.any.js
+-   [ ] upgrade-transaction-lifecycle-backend-aborted.any.js
+-   [ ] upgrade-transaction-lifecycle-committed.any.js
+-   [ ] upgrade-transaction-lifecycle-user-aborted.any.js
+-   [ ] value.any.js
+-   [ ] value_recursive.any.js
+-   [ ] writer-starvation.any.js
+-   [ ]
