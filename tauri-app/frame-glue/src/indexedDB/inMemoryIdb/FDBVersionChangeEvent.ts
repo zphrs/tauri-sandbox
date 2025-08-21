@@ -6,7 +6,7 @@ class FDBVersionChangeEvent extends FakeEvent {
 
     constructor(
         type: "blocked" | "success" | "upgradeneeded" | "versionchange",
-        parameters: { newVersion?: number | null; oldVersion?: number } = {}
+        parameters: { newVersion?: number | null; oldVersion?: number } = {},
     ) {
         super(type)
 

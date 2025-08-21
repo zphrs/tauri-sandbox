@@ -3,7 +3,7 @@ import { createError } from "./exceptions"
 
 export function idbRequestFromPromise<Result>(
     promise: Promise<Result>,
-    source: IDBObjectStore | IDBIndex | IDBCursor
+    source: IDBObjectStore | IDBIndex | IDBCursor,
 ): IDBRequest<Result> {
     return idbRequestFromPromiseInternal(promise, source).request
 }
@@ -15,7 +15,7 @@ export function idbRequestFromPromise<Result>(
  */
 function idbRequestFromPromiseInternal<Result>(
     promise: Promise<Result>,
-    source: IDBObjectStore | IDBIndex | IDBCursor | null
+    source: IDBObjectStore | IDBIndex | IDBCursor | null,
 ): { request: IDBRequest<Result>; setResult: (result: Result) => void } {
     let result: Result | null = null // on error becomes undefined
     let error: DOMException | null | undefined = undefined
@@ -45,9 +45,9 @@ function idbRequestFromPromiseInternal<Result>(
                 IDBRequest<Result>,
                 keyof EventTarget | "onsuccess" | "onerror"
             >,
-            IDBRequest
+            IDBRequest,
         ),
-        ["error", "success"] as const
+        ["error", "success"] as const,
     ) satisfies IDBRequest<Result>
     const oldDispatch: Function = out.dispatchEvent
     out.prototype.dispatchEvent = (...params: any[]) => {
@@ -89,12 +89,12 @@ export function createIdbOpenRequest(successPromise: Promise<IDBDatabase>): {
     broadcastUpgradeNeeded: (
         db: IDBDatabase,
         oldVersion: number,
-        newVersion: number
+        newVersion: number,
     ) => void
 } {
     const { request, setResult } = idbRequestFromPromiseInternal(
         successPromise,
-        null
+        null,
     )
     const reqFromPromise = extendObjectWithEvents(request, [
         "upgradeneeded",
@@ -111,7 +111,7 @@ export function createIdbOpenRequest(successPromise: Promise<IDBDatabase>): {
                 new IDBVersionChangeEvent("version", {
                     oldVersion,
                     newVersion,
-                })
+                }),
             )
         },
     }

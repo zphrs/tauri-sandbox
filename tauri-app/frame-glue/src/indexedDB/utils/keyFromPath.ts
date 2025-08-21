@@ -11,7 +11,7 @@ import { createError } from "../exceptions"
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-extracting-a-key-from-a-value-using-a-key-path
 const extractKey = (
     keyPath: string | string[],
-    value: any
+    value: any,
 ): IDBValidKey | undefined => {
     if (Array.isArray(keyPath)) {
         const result: any[] = []

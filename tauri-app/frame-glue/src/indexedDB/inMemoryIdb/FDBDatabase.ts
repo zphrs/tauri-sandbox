@@ -3,6 +3,7 @@ import type { CloseDatabaseMethod } from "../methods/closeDatabase"
 import FDBTransaction from "./FDBTransaction"
 import Database from "./lib/Database"
 import {
+    AbortError,
     ConstraintError,
     InvalidAccessError,
     InvalidStateError,
@@ -39,13 +40,18 @@ const confirmActiveVersionchangeTransaction = (database: FDBDatabase) => {
 }
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#database-closing-steps
-const closeConnection = (connection: FDBDatabase) => {
+const closeConnection = (connection: {
+    _rawDatabase: Database
+    name: string
+    _closePending: boolean
+    _closed: boolean
+}) => {
     connection._closePending = true
 
     const transactionsComplete = connection._rawDatabase.transactions.every(
         (transaction) => {
             return transaction._state === "finished"
-        }
+        },
     )
 
     if (transactionsComplete) {
@@ -57,7 +63,7 @@ const closeConnection = (connection: FDBDatabase) => {
         call<CloseDatabaseMethod>(
             connection._rawDatabase._port,
             "closeDatabase",
-            { name: connection.name }
+            { name: connection.name },
         )
     } else {
         queueTask(() => {
@@ -87,14 +93,14 @@ class FDBDatabase extends FakeEventTarget {
         this.name = rawDatabase.name
         this.version = rawDatabase.version
         this.objectStoreNames = new FakeDOMStringList(
-            ...Array.from(rawDatabase.rawObjectStores.keys()).sort()
+            ...Array.from(rawDatabase.rawObjectStores.keys()).sort(),
         )
     }
 
     // http://w3c.github.io/IndexedDB/#dom-idbdatabase-createobjectstore
     public createObjectStore(
         name: string,
-        options: { autoIncrement?: boolean; keyPath?: KeyPath } | null = {}
+        options: { autoIncrement?: boolean; keyPath?: KeyPath } | null = {},
     ) {
         if (name === undefined) {
             throw new TypeError()
@@ -138,14 +144,14 @@ class FDBDatabase extends FakeEventTarget {
             this._rawDatabase,
             name,
             keyPath,
-            autoIncrement
+            autoIncrement,
         )
         this.objectStoreNames._push(name)
         this.objectStoreNames._sort()
         this._rawDatabase.rawObjectStores.set(name, rawObjectStore)
         transaction._scope.add(name)
         transaction.objectStoreNames = new FakeDOMStringList(
-            ...this.objectStoreNames
+            ...this.objectStoreNames,
         )
         transaction._upgradeActions.push({
             method: "createObjectStore",
@@ -172,11 +178,18 @@ class FDBDatabase extends FakeEventTarget {
         this.objectStoreNames = new FakeDOMStringList(
             ...Array.from(this.objectStoreNames).filter((objectStoreName) => {
                 return objectStoreName !== name
-            })
+            }),
         )
         transaction.objectStoreNames = new FakeDOMStringList(
-            ...this.objectStoreNames
+            ...this.objectStoreNames,
         )
+
+        transaction._upgradeActions.push({
+            method: "deleteObjectStore",
+            params: {
+                name,
+            },
+        })
 
         transaction._rollbackLog.push(() => {
             store.deleted = false
@@ -207,7 +220,7 @@ class FDBDatabase extends FakeEventTarget {
                     transaction.mode === "versionchange" &&
                     transaction.db === this
                 )
-            }
+            },
         )
         if (hasActiveVersionchange) {
             throw new InvalidStateError()
@@ -226,7 +239,7 @@ class FDBDatabase extends FakeEventTarget {
         for (const storeName of storeNames) {
             if (!this.objectStoreNames.contains(storeName)) {
                 throw new NotFoundError(
-                    "No objectStore named " + storeName + " in this database"
+                    "No objectStore named " + storeName + " in this database",
                 )
             }
         }
@@ -240,6 +253,10 @@ class FDBDatabase extends FakeEventTarget {
 
     public close() {
         closeConnection(this)
+
+        if (this._runningVersionchangeTransaction) {
+            throw new AbortError()
+        }
     }
 
     public toString() {

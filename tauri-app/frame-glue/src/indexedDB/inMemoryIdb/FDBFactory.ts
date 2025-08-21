@@ -2,7 +2,7 @@ import { call } from "../../rpcOverPorts"
 import FDBDatabase from "./FDBDatabase"
 import FDBOpenDBRequest from "./FDBOpenDBRequest"
 import FDBVersionChangeEvent from "./FDBVersionChangeEvent"
-import cmp from "./lib/cmp"
+import { cmp } from "./lib/cmp"
 import Database from "./lib/Database"
 import enforceRange from "./lib/enforceRange"
 import { AbortError, VersionError } from "./lib/errors"
@@ -14,14 +14,13 @@ import ObjectStore from "./lib/ObjectStore"
 import Index from "./lib/Index"
 import type { UpgradeActions } from "../methods/OpenIDBDatabase"
 import type { DeleteDatabaseMethod } from "../methods/deleteDatabase"
-import type FDBTransaction from "./FDBTransaction"
 
 const waitForOthersClosedDelete = async (
     databases: Map<string, Database>,
     name: string,
     openDatabases: FDBDatabase[],
     cb: (err: Error | null) => void,
-    port: MessagePort
+    port: MessagePort,
 ) => {
     const anyOpen = openDatabases.some((openDatabase2) => {
         return !openDatabase2._closed && !openDatabase2._closePending
@@ -34,7 +33,7 @@ const waitForOthersClosedDelete = async (
                 name,
                 openDatabases,
                 cb,
-                port
+                port,
             )
         })
         return
@@ -52,7 +51,7 @@ const deleteDatabase = async (
     name: string,
     request: FDBOpenDBRequest,
     cb: (err: Error | null) => void,
-    port: MessagePort
+    port: MessagePort,
 ) => {
     try {
         const db = databases.get(name)
@@ -64,9 +63,11 @@ const deleteDatabase = async (
 
         db.deletePending = true
 
-        const openDatabases = db.connections.filter((connection) => {
-            return !connection._closed && !connection._closePending
-        })
+        const openDatabases: FDBDatabase[] = db.connections.filter(
+            (connection) => {
+                return !connection._closed && !connection._closePending
+            },
+        ) as FDBDatabase[]
 
         for (const openDatabase2 of openDatabases) {
             if (!openDatabase2._closePending) {
@@ -101,7 +102,7 @@ const runVersionchangeTransaction = (
     connection: FDBDatabase,
     version: number,
     request: FDBOpenDBRequest,
-    cb: (err: Error | null) => void
+    cb: (err: Error | null) => void,
 ) => {
     connection._runningVersionchangeTransaction = true
 
@@ -110,8 +111,8 @@ const runVersionchangeTransaction = (
     const openDatabases = connection._rawDatabase.connections.filter(
         (otherDatabase) => {
             return connection !== otherDatabase
-        }
-    )
+        },
+    ) as FDBDatabase[]
 
     for (const openDatabase2 of openDatabases) {
         if (!openDatabase2._closed && !openDatabase2._closePending) {
@@ -153,7 +154,7 @@ const runVersionchangeTransaction = (
         // Get rid of this setImmediate?
         const transaction = connection.transaction(
             Array.from(connection.objectStoreNames),
-            "versionchange"
+            "versionchange",
         )
         request.result = connection
         request.readyState = "done"
@@ -168,14 +169,18 @@ const runVersionchangeTransaction = (
             newVersion: version,
             oldVersion,
         })
-        request.dispatchEvent(event)
+        try {
+            request.dispatchEvent(event)
+        } catch {
+            cb(new AbortError())
+        }
 
         transaction.addEventListener("error", (e) => {
             connection._runningVersionchangeTransaction = false
             // throw arguments[0].target.error;
-            console.log(
+            console.error(
                 "error in versionchange transaction - not sure if anything needs to be done here",
-                e.target.error.name
+                e.target.error.name,
             )
         })
         transaction.addEventListener("abort", () => {
@@ -209,7 +214,7 @@ const openDatabase = async (
     version: number | undefined,
     request: FDBOpenDBRequest,
     cb: (err: Error | null, connection?: FDBDatabase) => void,
-    port: MessagePort
+    port: MessagePort,
 ) => {
     const dbInfo = await call<GetDbInfoMethod>(port, "getDbInfo", undefined)
     let oldVersion = dbInfo.find((v) => v.name == name)?.version
@@ -250,7 +255,7 @@ const openDatabase = async (
         })
     } else {
         const upgradeActions: UpgradeActions[] = []
-        await callOpenDatabase(connection, upgradeActions, request.transaction!)
+        await callOpenDatabase(connection, upgradeActions)
         cb(null, connection)
     }
 }
@@ -301,7 +306,7 @@ class FDBFactory {
                     })
                     request.dispatchEvent(event2)
                 },
-                this._port
+                this._port,
             )
         })
 
@@ -340,6 +345,9 @@ class FDBFactory {
                             cancelable: true,
                         })
                         event.eventPath = []
+                        if (request.transaction) {
+                            request.transaction.error = request.error
+                        }
                         request.dispatchEvent(event)
 
                         return
@@ -352,7 +360,7 @@ class FDBFactory {
                     event2.eventPath = []
                     request.dispatchEvent(event2)
                 },
-                this._port
+                this._port,
             )
         })
 
@@ -373,7 +381,6 @@ export default FDBFactory
 export async function callOpenDatabase(
     connection: FDBDatabase,
     upgradeActions: UpgradeActions[],
-    openTransaction: FDBTransaction
 ) {
     const db = connection._rawDatabase
     const res = await call<OpenIDBDatabaseMethod>(db._port, "openDatabase", {
@@ -388,7 +395,7 @@ export async function callOpenDatabase(
                 db,
                 storeData.name,
                 storeData.parameters.keyPath ?? null,
-                storeData.parameters.autoIncrement ?? false
+                storeData.parameters.autoIncrement ?? false,
             )
 
             connection.objectStoreNames._push(storeData.name)
@@ -402,7 +409,7 @@ export async function callOpenDatabase(
                 index.name,
                 index.keyPath,
                 index.parameters.multiEntry ?? false,
-                index.parameters.unique ?? false
+                index.parameters.unique ?? false,
             )
             // can immediately mark as initialized because
             // at this point the store has no records stored

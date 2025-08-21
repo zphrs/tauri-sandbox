@@ -9,7 +9,7 @@ import { handleReadMethod } from "./readFromStore"
 
 export async function setupIDBMethodHandlersFromPort(
     port: MessagePort,
-    docId: string
+    docId: string,
 ) {
     handleGetDbInfo(port, docId)
     handleGetIDBDatabaseStores(port, docId)

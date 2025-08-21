@@ -1,6 +1,15 @@
-import { FDBCursorWithValue, FDBKeyRange, FDBObjectStore, FDBRequest } from "."
+import {
+    FDBCursorWithValue,
+    FDBIndex,
+    FDBKeyRange,
+    FDBObjectStore,
+    FDBRequest,
+} from "."
+import { call } from "../../rpcOverPorts"
+import type { GetNextFromCursorMethod } from "../methods/readFromStore"
+import { serializeQuery } from "../methods/SerializedRange"
 
-import cmp from "./lib/cmp"
+import { cmp } from "./lib/cmp"
 import {
     DataError,
     InvalidAccessError,
@@ -33,7 +42,7 @@ const getEffectiveObjectStore = (cursor: FDBCursor) => {
 const makeKeyRange = (
     range: FDBKeyRange | IDBValidKey | undefined,
     lowers: (Key | undefined)[],
-    uppers: (Key | undefined)[]
+    uppers: (Key | undefined)[],
 ) => {
     // Start with bounds from range
     let [lower, upper] =
@@ -72,6 +81,8 @@ const makeKeyRange = (
     }
 }
 
+export async function getValueIterator() {}
+
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#cursor
 class FDBCursor {
     public _request: FDBRequest | undefined
@@ -80,25 +91,24 @@ class FDBCursor {
     private _range: CursorRange
     private _position: IDBValidKey | undefined = undefined // Key of previously returned record
     private _objectStorePosition: IDBValidKey | undefined = undefined
-    private _keyOnly: boolean = false
 
     private _source: CursorSource
     private _direction: FDBCursorDirection
     private _key: IDBValidKey | undefined = undefined
     private _primaryKey: Key | undefined = undefined
+    private _previousFetchedPrimaryKey: Key | undefined = undefined
+    private _previousFetchedKey: Key | undefined = undefined
 
     constructor(
         source: CursorSource,
         range: CursorRange,
         direction: FDBCursorDirection = "next",
         request?: FDBRequest,
-        keyOnly: boolean = false
     ) {
         this._range = range
         this._source = source
         this._direction = direction
         this._request = request
-        this._keyOnly = keyOnly
     }
 
     // Read only properties
@@ -139,7 +149,7 @@ class FDBCursor {
 
     // https://w3c.github.io/IndexedDB/#iterate-a-cursor
     public async _iterate(key?: Key, primaryKey?: Key): Promise<this | null> {
-        if (this._range === undefined) throw new InvalidStateError()
+        // if (this._range === undefined) throw new InvalidStateError()
         const sourceIsObjectStore = this.source instanceof FDBObjectStore
 
         // Can't use sourceIsObjectStore because TypeScript
@@ -147,152 +157,229 @@ class FDBCursor {
             this.source instanceof FDBObjectStore
                 ? this.source._rawObjectStore.records
                 : this.source._rawIndex.records
-
+        const objectStore =
+            this.source instanceof FDBIndex
+                ? this.source._rawIndex.rawObjectStore
+                : this.source._rawObjectStore
+        const storeName: string = objectStore.name
+        const port: MessagePort = objectStore.rawDatabase._port
         let foundRecord: Record | undefined
-        if (this.direction === "next") {
-            const range = makeKeyRange(this._range, [key, this._position], [])
-            for (const record of records.values(range)) {
-                const cmpResultKey =
-                    key !== undefined ? cmp(record.key, key) : undefined
-                const cmpResultPosition =
-                    this._position !== undefined
-                        ? cmp(record.key, this._position)
-                        : undefined
-                if (key !== undefined) {
-                    if (cmpResultKey === -1) {
-                        continue
-                    }
+        const isNext = this.direction.includes("next")
+        const isUnique = this.direction.includes("unique")
+        const range = makeKeyRange(
+            this._range,
+            isNext ? [key, this._position] : [],
+            isNext ? [] : [key, this._position],
+        )
+        if (range && this._range?.lowerOpen) {
+            range.lowerOpen = true
+        }
+        if (range && this._range?.upperOpen) {
+            range.upperOpen = true
+        }
+        if (
+            (isUnique || sourceIsObjectStore) &&
+            range &&
+            isNext &&
+            this._range?.lower !== range?.lower
+        ) {
+            range.lowerOpen = true
+        }
+
+        if (
+            (isUnique || sourceIsObjectStore) &&
+            range &&
+            !isNext &&
+            this._range?.upper !== range?.upper
+        ) {
+            range.upperOpen = true
+        }
+        const fetchedNextPromise = call<GetNextFromCursorMethod>(
+            port,
+            "executeReadMethod",
+            {
+                dbName: objectStore.rawDatabase.name,
+                store: storeName,
+                call: {
+                    method: "getNextFromCursor",
+                    params: {
+                        range: serializeQuery(range),
+                        direction: this.direction,
+                        prevPrimaryKey:
+                            range &&
+                            this._previousFetchedKey &&
+                            range.includes(this._previousFetchedKey)
+                                ? this._previousFetchedPrimaryKey
+                                : undefined,
+                        indexName: sourceIsObjectStore
+                            ? undefined
+                            : this.source.name,
+                    },
+                },
+            },
+        )
+
+        const iterationDirection = isNext ? undefined : "prev"
+        let tempRecord: Record | undefined
+
+        for (const record of records.values(range, iterationDirection)) {
+            const cmpResultKey =
+                key !== undefined ? cmp(record.key, key) : undefined
+            const cmpResultPosition =
+                this._position !== undefined
+                    ? cmp(record.key, this._position)
+                    : undefined
+
+            // Key comparison checks
+            if (key !== undefined) {
+                if (
+                    (isNext && cmpResultKey === -1) ||
+                    (!isNext && cmpResultKey === 1)
+                ) {
+                    continue
                 }
-                if (primaryKey !== undefined) {
-                    if (cmpResultKey === -1) {
-                        continue
-                    }
-                    const cmpResultPrimaryKey = cmp(record.value, primaryKey)
-                    if (cmpResultKey === 0 && cmpResultPrimaryKey === -1) {
-                        continue
-                    }
-                }
-                if (this._position !== undefined && sourceIsObjectStore) {
-                    if (cmpResultPosition !== 1) {
-                        continue
-                    }
-                }
-                if (this._position !== undefined && !sourceIsObjectStore) {
-                    if (cmpResultPosition === -1) {
-                        continue
-                    }
-                    if (
-                        cmpResultPosition === 0 &&
-                        cmp(record.value, this._objectStorePosition) !== 1
-                    ) {
-                        continue
-                    }
-                }
-                if (this._range !== undefined) {
-                    if (!this._range.includes(record.key)) {
-                        continue
-                    }
-                }
-                foundRecord = record
-                break
-            }
-        } else if (this.direction === "nextunique") {
-            // This could be done without iterating, if the range was defined slightly better (to handle gt/gte cases).
-            // But the performance difference should be small, and that wouldn't work anyway for directions where the
-            // value needs to be used (like next and prev).
-            const range = makeKeyRange(this._range, [key, this._position], [])
-            for (const record of records.values(range)) {
-                if (key !== undefined) {
-                    if (cmp(record.key, key) === -1) {
-                        continue
-                    }
-                }
-                if (this._position !== undefined) {
-                    if (cmp(record.key, this._position) !== 1) {
-                        continue
-                    }
-                }
-                if (this._range !== undefined) {
-                    if (!this._range.includes(record.key)) {
-                        continue
-                    }
-                }
-                foundRecord = record
-                break
-            }
-        } else if (this.direction === "prev") {
-            const range = makeKeyRange(this._range, [], [key, this._position])
-            for (const record of records.values(range, "prev")) {
-                const cmpResultKey =
-                    key !== undefined ? cmp(record.key, key) : undefined
-                const cmpResultPosition =
-                    this._position !== undefined
-                        ? cmp(record.key, this._position)
-                        : undefined
-                if (key !== undefined) {
-                    if (cmpResultKey === 1) {
-                        continue
-                    }
-                }
-                if (primaryKey !== undefined) {
-                    if (cmpResultKey === 1) {
-                        continue
-                    }
-                    const cmpResultPrimaryKey = cmp(record.value, primaryKey)
-                    if (cmpResultKey === 0 && cmpResultPrimaryKey === 1) {
-                        continue
-                    }
-                }
-                if (this._position !== undefined && sourceIsObjectStore) {
-                    if (cmpResultPosition !== -1) {
-                        continue
-                    }
-                }
-                if (this._position !== undefined && !sourceIsObjectStore) {
-                    if (cmpResultPosition === 1) {
-                        continue
-                    }
-                    if (
-                        cmpResultPosition === 0 &&
-                        cmp(record.value, this._objectStorePosition) !== -1
-                    ) {
-                        continue
-                    }
-                }
-                if (this._range !== undefined) {
-                    if (!this._range.includes(record.key)) {
-                        continue
-                    }
-                }
-                foundRecord = record
-                break
-            }
-        } else if (this.direction === "prevunique") {
-            let tempRecord
-            const range = makeKeyRange(this._range, [], [key, this._position])
-            for (const record of records.values(range, "prev")) {
-                if (key !== undefined) {
-                    if (cmp(record.key, key) === 1) {
-                        continue
-                    }
-                }
-                if (this._position !== undefined) {
-                    if (cmp(record.key, this._position) !== -1) {
-                        continue
-                    }
-                }
-                if (this._range !== undefined) {
-                    if (!this._range.includes(record.key)) {
-                        continue
-                    }
-                }
-                tempRecord = record
-                break
             }
 
-            if (tempRecord) {
-                foundRecord = records.get(tempRecord.key)
+            // Primary key comparison for continuePrimaryKey
+            if (primaryKey !== undefined) {
+                if (
+                    (isNext && cmpResultKey === -1) ||
+                    (!isNext && cmpResultKey === 1)
+                ) {
+                    continue
+                }
+                const cmpResultPrimaryKey = cmp(record.value, primaryKey)
+                if (cmpResultKey === 0) {
+                    if (
+                        (isNext && cmpResultPrimaryKey === -1) ||
+                        (!isNext && cmpResultPrimaryKey === 1)
+                    ) {
+                        continue
+                    }
+                }
             }
+
+            // Position comparison
+            if (this._position !== undefined) {
+                if (sourceIsObjectStore) {
+                    if (
+                        (isNext && cmpResultPosition !== 1) ||
+                        (!isNext && cmpResultPosition !== -1)
+                    ) {
+                        continue
+                    }
+                } else {
+                    if (
+                        (isNext && cmpResultPosition === -1) ||
+                        (!isNext && cmpResultPosition === 1)
+                    ) {
+                        continue
+                    }
+                    if (cmpResultPosition === 0) {
+                        const objStoreCmp = cmp(
+                            record.value,
+                            this._objectStorePosition,
+                        )
+                        if (
+                            (isNext && objStoreCmp !== 1) ||
+                            (!isNext && objStoreCmp !== -1)
+                        ) {
+                            continue
+                        }
+                    }
+                }
+            }
+
+            // For unique directions, position check is different
+            if (isUnique && this._position !== undefined) {
+                const expectedCmp = isNext ? 1 : -1
+                if (cmpResultPosition !== expectedCmp) {
+                    continue
+                }
+            }
+
+            // Range check
+            if (
+                this._range !== undefined &&
+                !this._range.includes(record.key)
+            ) {
+                continue
+            }
+
+            tempRecord = record
+            break
+        }
+
+        // For prevunique, get the actual record by key
+        if (this.direction === "prevunique" && tempRecord) {
+            foundRecord = records.get(tempRecord.key)
+        } else {
+            foundRecord = tempRecord
+        }
+
+        const fetchedNext = await fetchedNextPromise
+
+        console.log({ fetchedNext, foundRecord })
+
+        // Compare local foundRecord with remote fetchedNext to determine which to use
+        const convertedFetchedNext =
+            fetchedNext &&
+            (sourceIsObjectStore
+                ? { key: fetchedNext.key, value: fetchedNext.value }
+                : { key: fetchedNext.key, value: fetchedNext.primaryKey })
+        if (foundRecord && fetchedNext) {
+            const cmpResult = cmp(
+                sourceIsObjectStore
+                    ? foundRecord.key
+                    : [foundRecord.key, foundRecord.value],
+                sourceIsObjectStore
+                    ? fetchedNext.key
+                    : [fetchedNext.key, fetchedNext.primaryKey],
+            )
+            if (isNext) {
+                // For next direction, use the smaller key
+                if (cmpResult > 0) {
+                    foundRecord = convertedFetchedNext
+                } else {
+                    // if same, fall back to primaryKey ordering
+                    const foundPrimaryKey: Key = sourceIsObjectStore
+                        ? foundRecord.key
+                        : (foundRecord.value as Key)
+
+                    const fetchedPrimaryKey = fetchedNext.primaryKey
+
+                    if (cmp(foundPrimaryKey, fetchedPrimaryKey) > 0) {
+                        foundRecord = convertedFetchedNext
+                    }
+                }
+            } else {
+                // For prev direction, use the larger key
+                if (cmpResult < 0) {
+                    foundRecord = convertedFetchedNext
+                } else {
+                    // if same, fall back to primaryKey ordering
+                    const foundPrimaryKey: Key = sourceIsObjectStore
+                        ? foundRecord.key
+                        : (foundRecord.value as Key)
+
+                    const fetchedPrimaryKey = fetchedNext.primaryKey
+
+                    if (cmp(foundPrimaryKey, fetchedPrimaryKey) < 0) {
+                        foundRecord = convertedFetchedNext
+                    }
+                }
+            }
+            // either way, default to the foundRecord if the two keys are identical
+        } else if (fetchedNext) {
+            // If we only have fetchedNext, use it
+            foundRecord = convertedFetchedNext
+        }
+
+        const fetchedChosen = convertedFetchedNext === foundRecord
+
+        if (foundRecord !== undefined && fetchedChosen) {
+            this._previousFetchedPrimaryKey = fetchedNext!.primaryKey as Key
+            this._previousFetchedKey = fetchedNext!.key
         }
 
         let result
@@ -302,13 +389,8 @@ class FDBCursor {
                 this._objectStorePosition = undefined
             }
 
-            // "this instanceof FDBCursorWithValue" would be better and not require (this as any), but causes runtime
-            // error due to circular dependency.
-            if (
-                !this._keyOnly &&
-                this.toString() === "[object IDBCursorWithValue]"
-            ) {
-                ;(this as unknown as FDBCursorWithValue).value = undefined
+            if (this instanceof FDBCursorWithValue) {
+                this.value = undefined
             }
             result = null
         } else {
@@ -319,26 +401,19 @@ class FDBCursor {
             this._key = foundRecord.key
             if (sourceIsObjectStore) {
                 this._primaryKey = structuredClone(foundRecord.key)
-                if (
-                    !this._keyOnly &&
-                    this.toString() === "[object IDBCursorWithValue]"
-                ) {
-                    ;(this as unknown as FDBCursorWithValue).value =
-                        structuredClone(foundRecord.value)
+                if (this instanceof FDBCursorWithValue) {
+                    this.value = structuredClone(foundRecord.value)
                 }
             } else {
                 this._primaryKey = structuredClone(foundRecord.value as Key)
-                if (
-                    !this._keyOnly &&
-                    this.toString() === "[object IDBCursorWithValue]"
-                ) {
+                if (this instanceof FDBCursorWithValue) {
                     if (this.source instanceof FDBObjectStore) {
                         // Can't use sourceIsObjectStore because TypeScript
                         throw new Error("This should never happen")
                     }
                     const value =
                         await this.source.objectStore._rawObjectStore.getValue(
-                            foundRecord.value as Key
+                            foundRecord.value as Key,
                         )
                     ;(this as unknown as FDBCursorWithValue).value =
                         structuredClone(value)
@@ -412,7 +487,7 @@ class FDBCursor {
                 effectiveObjectStore._rawObjectStore,
                 record,
                 false,
-                transaction._rollbackLog
+                transaction._rollbackLog,
             ),
             source: this,
         })
@@ -618,7 +693,7 @@ class FDBCursor {
             operation: effectiveObjectStore._rawObjectStore.deleteRecord.bind(
                 effectiveObjectStore._rawObjectStore,
                 effectiveKey as Key,
-                transaction._rollbackLog
+                transaction._rollbackLog,
             ),
             source: this,
         })

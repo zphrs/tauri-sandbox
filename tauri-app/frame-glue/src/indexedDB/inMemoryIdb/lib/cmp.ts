@@ -1,7 +1,7 @@
 import { DataError } from "./errors"
 import valueToKey from "./valueToKey"
 
-const getType = (x: any) => {
+const getType = (x: unknown) => {
     if (typeof x === "number") {
         return "Number"
     }
@@ -22,7 +22,8 @@ const getType = (x: any) => {
 }
 
 // https://w3c.github.io/IndexedDB/#compare-two-keys
-const cmp = (first: any, second: any): -1 | 0 | 1 => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const cmp = (first: any, second: any): -1 | 0 | 1 => {
     if (second === undefined) {
         throw new TypeError()
     }
@@ -88,5 +89,3 @@ const cmp = (first: any, second: any): -1 | 0 | 1 => {
 
     return first > second ? 1 : -1
 }
-
-export default cmp

@@ -14,7 +14,7 @@ class FDBCursorWithValue extends FDBCursor {
         source: CursorSource,
         range: CursorRange,
         direction?: FDBCursorDirection,
-        request?: FDBRequest
+        request?: FDBRequest,
     ) {
         super(source, range, direction, request)
     }

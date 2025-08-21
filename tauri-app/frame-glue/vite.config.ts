@@ -19,6 +19,7 @@ export default defineConfig({
             provider: "playwright",
             enabled: true,
             instances: [{ browser: "chromium" }],
+            // headless: true,
         },
         coverage: {
             provider: "v8",

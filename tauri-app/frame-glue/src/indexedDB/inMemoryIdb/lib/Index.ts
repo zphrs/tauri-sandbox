@@ -5,7 +5,7 @@ import type {
     GetAllRecordsFromIndexMethod,
     Read,
 } from "../../methods/readFromStore"
-import cmp from "./cmp"
+import { cmp } from "./cmp"
 
 import { ConstraintError } from "./errors"
 import extractKey from "./extractKey"
@@ -32,7 +32,7 @@ class Index {
         name: string,
         keyPath: KeyPath,
         multiEntry: boolean,
-        unique: boolean
+        unique: boolean,
     ) {
         this.rawObjectStore = rawObjectStore
 
@@ -55,9 +55,9 @@ class Index {
             count = Infinity
         }
 
-        const records: Record[] = await this.getAllRecords(
+        const records: Record[] = await this._getAllRecords(
             range instanceof FDBKeyRange ? range : FDBKeyRange.only(range),
-            count
+            count,
         )
 
         const out = []
@@ -74,9 +74,9 @@ class Index {
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#index-referenced-value-retrieval-operation
     public async getValue(key: FDBKeyRange | Key) {
         const record: Record | undefined = (
-            await this.getAllRecords(
+            await this._getAllRecords(
                 key instanceof FDBKeyRange ? key : FDBKeyRange.only(key),
-                1
+                1,
             )
         )[0]
 
@@ -89,10 +89,10 @@ class Index {
     }
 
     private async executeReadMethod<
-        Method extends ExecuteReadMethod<Read, unknown>
+        Method extends ExecuteReadMethod<Read, unknown>,
     >(
         method: Method["req"]["params"]["call"]["method"],
-        params: Method["req"]["params"]["call"]["params"]
+        params: Method["req"]["params"]["call"]["params"],
     ) {
         const readCall = { method, params } as Method["req"]["params"]["call"]
         return await call<Method>(
@@ -105,11 +105,14 @@ class Index {
                     call: readCall,
                 },
                 transferableObjects: [],
-            }
+            },
         )
     }
 
-    private async getAllRecords(range: FDBKeyRange, count: number | undefined) {
+    public async _getAllRecords(
+        range: FDBKeyRange | undefined,
+        count: number | undefined,
+    ) {
         if (count === undefined || count === 0) {
             count = Infinity
         }
@@ -120,7 +123,7 @@ class Index {
                 indexName: this.name,
                 query: range,
                 count: Number.isFinite(count) ? count : undefined,
-            }
+            },
         )
 
         const cachedRecords: Record[] = []
@@ -142,7 +145,6 @@ class Index {
                 return this.convertRecordToIndexRecord(inlineRecord, true)
             })
             .filter((v) => !this.rawObjectStore.records.modified(v.value))
-        console.log({ cachedRecords, fetchedRecords })
 
         // mergesort
         const out: Record[] = []
@@ -179,7 +181,7 @@ class Index {
         if (cachedRecords.length > j) {
             out.push(...cachedRecords.slice(j, j + (count - out.length)))
         }
-        console.log("Returning from records:", out)
+
         return out
     }
 
@@ -189,28 +191,26 @@ class Index {
             count = Infinity
         }
 
-        const records: Record[] = await this.getAllRecords(
+        const records: Record[] = await this._getAllRecords(
             range instanceof FDBKeyRange ? range : FDBKeyRange.only(range),
-            count
+            count,
         )
 
-        const out = []
+        const outPromises = [] as Promise<unknown>[]
         for (const record of records) {
-            out.push(await this.rawObjectStore.getValue(record.value as Key))
-            if (out.length >= count) {
+            outPromises.push(this.rawObjectStore.getValue(record.value as Key))
+            if (outPromises.length >= count) {
                 break
             }
         }
 
-        return out
+        return await Promise.all(outPromises)
     }
 
     private convertRecordToIndexRecord(
         record: Record,
-        skipUniquenessVerification: boolean = false
+        skipUniquenessVerification: boolean = false,
     ) {
-        console.log("HERE1")
-
         let indexKey
         try {
             indexKey = extractKey(this.keyPath, record.value).key
@@ -286,7 +286,6 @@ class Index {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-storing-a-record-into-an-object-store (step 7)
     public storeRecord(newRecord: Record) {
-        console.log("STORING RECORD IN INDEX", this.name, newRecord)
         const idxRecord = this.convertRecordToIndexRecord(newRecord)
         if (Array.isArray(idxRecord)) {
             for (const record of idxRecord) {

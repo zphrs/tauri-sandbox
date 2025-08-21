@@ -40,7 +40,7 @@ export type ProxiedResponse = SuccessfulProxiedResponse
 async function sendProxiedResponse(
     port: MessagePort,
     id: string | number,
-    res: Response
+    res: Response,
 ) {
     const arrBuf = await res.arrayBuffer()
     port.postMessage(
@@ -51,12 +51,12 @@ async function sendProxiedResponse(
             },
             id,
         } satisfies ProxiedResponse,
-        [arrBuf]
+        [arrBuf],
     )
 }
 async function receiveProxiedResponse(
     port: MessagePort,
-    id: string
+    id: string,
 ): Promise<Response> {
     const controller = new AbortController()
     return new Promise((res) => {
@@ -68,11 +68,11 @@ async function receiveProxiedResponse(
                 controller.abort() // same as fetch request
                 const out = new Response(
                     msgEvent.data.result.arrBuf as ArrayBuffer,
-                    msgEvent.data.result.responseInit as ResponseInit
+                    msgEvent.data.result.responseInit as ResponseInit,
                 )
                 res(out)
             },
-            { signal: controller.signal }
+            { signal: controller.signal },
         )
         port.start()
     })
@@ -89,7 +89,7 @@ async function receiveProxiedResponse(
  */
 export async function proxyFetchEvent(
     port: MessagePort,
-    event: FetchEvent
+    event: FetchEvent,
 ): Promise<Response> {
     console.log("Proxying ", event)
     const id = globalThis.crypto.randomUUID()
@@ -103,7 +103,7 @@ export async function proxyFetchEvent(
             },
             id,
         } satisfies ProxiedFetchRequest,
-        reqAsObj[1].body ? [reqAsObj[1].body] : []
+        reqAsObj[1].body ? [reqAsObj[1].body] : [],
     )
     return receiveProxiedResponse(port, id)
 }
@@ -121,7 +121,7 @@ export async function sendInitEvent(port: MessagePort) {
  */
 export async function handleProxiedFetchEvent(
     port: MessagePort,
-    onfetch: (event: FetchEvent) => void
+    onfetch: (event: FetchEvent) => void,
 ): Promise<() => void> {
     const controller = new AbortController()
     await new Promise<void>((res) => {
@@ -138,7 +138,7 @@ export async function handleProxiedFetchEvent(
                 }
                 onfetch(fetchEvent)
             },
-            { signal: controller.signal }
+            { signal: controller.signal },
         )
         port.start()
     })

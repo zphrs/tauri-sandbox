@@ -6,12 +6,13 @@ import {
     getIndexByKeyGTE,
     getIndexByKeyRange,
 } from "./binarySearch"
-import cmp from "./cmp"
+import { cmp } from "./cmp"
 import type { Key, Record } from "./types"
 
 class RecordStore {
     private records: Record[] = []
     private keyModificationSet: RecordStore | undefined
+    private deletedKeyRanges: IDBKeyRange[] = []
 
     constructor(isModificationSet: boolean = false) {
         if (!isModificationSet) {
@@ -29,6 +30,8 @@ class RecordStore {
     // do at either abort or complete of transaction
     public cleanupAfterCompletedTransaction() {
         this.keyModificationSet!.clear(false)
+        this.records = []
+        this.deletedKeyRanges = []
     }
     // set operation works by a delete followed by an add so we only need to
     // call this function internally within the set and delete operations
@@ -39,7 +42,15 @@ class RecordStore {
     }
 
     public modified(key: Key) {
-        return this.keyModificationSet!.get(key) !== undefined
+        if (this.keyModificationSet!.get(key) !== undefined) {
+            return true
+        }
+        for (const keyRange of this.deletedKeyRanges) {
+            if (keyRange.includes(key)) {
+                return true
+            }
+        }
+        return false
     }
 
     public add(newRecord: Record) {
@@ -70,7 +81,6 @@ class RecordStore {
         }
         this.addToModifications(newRecord)
         this.records.splice(i, 0, newRecord)
-        console.log(this.records)
     }
     // only used in addToModifications
     private set(newRecord: Record) {
@@ -99,6 +109,7 @@ class RecordStore {
         const deletedRecords: Record[] = []
 
         const isRange = key instanceof FDBKeyRange
+        this.deletedKeyRanges.push(isRange ? key : FDBKeyRange.only(key))
         while (true) {
             const idx = isRange
                 ? getIndexByKeyRange(this.records, key)
@@ -155,7 +166,7 @@ class RecordStore {
                         while (this.records[i] !== undefined) {
                             const cmpResult = cmp(
                                 this.records[i].key,
-                                range.lower
+                                range.lower,
                             )
                             if (
                                 cmpResult === 1 ||
@@ -172,7 +183,7 @@ class RecordStore {
                         while (this.records[i] !== undefined) {
                             const cmpResult = cmp(
                                 this.records[i].key,
-                                range.upper
+                                range.upper,
                             )
                             if (
                                 cmpResult === -1 ||

@@ -4,7 +4,7 @@ import type { KeyPath, Value } from "./types"
 const canInjectKey = (keyPath: KeyPath, value: Value) => {
     if (Array.isArray(keyPath)) {
         throw new Error(
-            "The key paths used in this section are always strings and never sequences, since it is not possible to create a object store which has a key generator and also has a key path that is a sequence."
+            "The key paths used in this section are always strings and never sequences, since it is not possible to create a object store which has a key generator and also has a key path that is a sequence.",
         )
     }
 

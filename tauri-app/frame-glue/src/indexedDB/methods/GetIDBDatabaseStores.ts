@@ -28,7 +28,7 @@ export function handleGetIDBDatabaseStores(port: MessagePort, docId: string) {
             // first check if it even exists
             if (
                 !(await indexedDB.databases()).some(
-                    (v) => v.name === `${docId}:${name}`
+                    (v) => v.name === `${docId}:${name}`,
                 )
             ) {
                 return []
@@ -45,14 +45,17 @@ export function handleGetIDBDatabaseStores(port: MessagePort, docId: string) {
                     res(idbStoresFromDb(db))
                 }
             })
-        }
+        },
     )
 }
 
 function idbStoresFromDb(db: IDBDatabase) {
     const names = db.objectStoreNames
-    let tx = db.transaction(names, "readonly")
-    let out: GetIDBDatabaseStoresMethod["res"]["result"] = []
+    if (names.length === 0) {
+        return []
+    }
+    const tx = db.transaction(names, "readonly")
+    const out: GetIDBDatabaseStoresMethod["res"]["result"] = []
 
     for (const name of names) {
         const store = tx.objectStore(name)

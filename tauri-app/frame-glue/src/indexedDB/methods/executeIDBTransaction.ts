@@ -4,6 +4,7 @@ import {
     type Notification,
 } from "../../rpcOverPorts"
 import { openedDbs } from "./OpenIDBDatabase"
+
 import { type SerializedQuery, deserializeQuery } from "./SerializedRange"
 
 type Add = Notification<
@@ -64,7 +65,7 @@ export type ExecuteIDBTransactionMethod = Method<
 
 export function handleExecuteIDBTransactionMethod(
     port: MessagePort,
-    docId: string
+    docId: string,
 ) {
     handleRequests<ExecuteIDBTransactionMethod>(
         port,
@@ -77,23 +78,36 @@ export function handleExecuteIDBTransactionMethod(
             for (const storeName in txs) {
                 const changes = txs[storeName]
                 const store: IDBObjectStore = tx.objectStore(storeName)
-
                 for (const change of changes) {
-                    performWriteOperation(change, store)
+                    performWriteOperation(change, store).then((opReq) => {
+                        // we know that this is likely what was carried out on the
+                        // parent thread in order to handle the error without
+                        // aborting the transaction
+                        opReq.onerror = (e) => {
+                            console.warn("error while executing write op: ", e)
+                            e.preventDefault()
+                            tx.commit()
+                        }
+                    })
                 }
                 return new Promise((res) => {
                     tx.oncomplete = () => {
                         res(undefined)
                     }
+                    tx.onerror = (e) => {
+                        throw e
+                        // e.preventDefault()
+                        // tx.commit()
+                    }
                 })
             }
-        }
+        },
     )
 }
 
 export async function performWriteOperation(
     change: Write,
-    store: IDBObjectStore
+    store: IDBObjectStore,
 ) {
     switch (change.method) {
         case "add": {
@@ -105,7 +119,7 @@ export async function performWriteOperation(
         }
         case "delete": {
             const { query } = change.params
-            return store.delete(deserializeQuery(query))
+            return store.delete(deserializeQuery(query)!)
         }
         case "put": {
             const { value, key } = change.params
@@ -115,7 +129,7 @@ export async function performWriteOperation(
             // key stays the same so no need to update the metadata store
             const { key, index, value } = change.params
             const request = store.index(index).openCursor(key)
-            return new Promise<IDBRequest<IDBValidKey>>((res) => {
+            return await new Promise<IDBRequest<IDBValidKey>>((res) => {
                 request.onsuccess = () => {
                     res(request.result!.update(value))
                 }

@@ -24,6 +24,20 @@ const valueToKey = (input: unknown, seen?: Set<object>): Key | Key[] => {
             ArrayBuffer.isView &&
             ArrayBuffer.isView(input))
     ) {
+        if (
+            // detached is new as of es2024
+            "detached" in input &&
+            input.detached
+        ) {
+            throw new DataError()
+        }
+        if (
+            "buffer" in input &&
+            "detached" in input.buffer &&
+            input.buffer.detached
+        ) {
+            throw new DataError()
+        }
         let arrayBuffer
         let offset = 0
         let length = 0
@@ -35,8 +49,8 @@ const valueToKey = (input: unknown, seen?: Set<object>): Key | Key[] => {
             arrayBuffer = input
             length = input.byteLength
         } else {
-            arrayBuffer = input.buffer
-            offset = input.byteOffset
+            arrayBuffer = (input as ArrayBufferView<ArrayBufferLike>).buffer
+            offset = (input as ArrayBufferView<ArrayBufferLike>).byteOffset
             length = input.byteLength
         }
 

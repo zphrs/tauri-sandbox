@@ -1,5 +1,5 @@
 import FDBKeyRange from "../FDBKeyRange"
-import cmp from "./cmp"
+import { cmp } from "./cmp"
 import type { Key, Record } from "./types"
 
 /**
@@ -46,7 +46,7 @@ export function getByKey(records: Record[], key: Key): Record | undefined {
  */
 export function getIndexByKeyRange(
     records: Record[],
-    keyRange: FDBKeyRange
+    keyRange: FDBKeyRange,
 ): number {
     const lowerIdx =
         typeof keyRange.lower === "undefined"
@@ -71,7 +71,7 @@ export function getIndexByKeyRange(
  */
 export function getByKeyRange(
     records: Record[],
-    keyRange: FDBKeyRange
+    keyRange: FDBKeyRange,
 ): Record | undefined {
     const idx = getIndexByKeyRange(records, keyRange)
     return records[idx]

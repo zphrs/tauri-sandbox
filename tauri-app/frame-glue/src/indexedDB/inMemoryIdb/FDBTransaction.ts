@@ -67,11 +67,11 @@ class FDBTransaction extends FakeEventTarget {
                     prev[curr] = []
                     return prev
                 },
-                {} as { [key: string]: Write[] }
+                {} as { [key: string]: Write[] },
             ),
         }
         this.objectStoreNames = new FakeDOMStringList(
-            ...Array.from(this._scope).sort()
+            ...Array.from(this._scope).sort(),
         )
     }
 
@@ -132,7 +132,7 @@ class FDBTransaction extends FakeEventTarget {
     // http://w3c.github.io/IndexedDB/#dom-idbtransaction-objectstore
     public objectStore(name: string) {
         if (this._state !== "active") {
-            throw new InvalidStateError()
+            throw new TransactionInactiveError()
         }
 
         const objectStore = this._objectStoresCache.get(name)
@@ -151,7 +151,7 @@ class FDBTransaction extends FakeEventTarget {
                       this._upgradeActions.find(
                           (v) =>
                               v.method === "createObjectStore" &&
-                              v.params.name === name
+                              v.params.name === name,
                       )!.params as {
                           name: string
                           options: IDBObjectStoreParameters
@@ -163,7 +163,7 @@ class FDBTransaction extends FakeEventTarget {
         const objectStore2 = new FDBObjectStore(
             this,
             rawObjectStore,
-            writeActionArr
+            writeActionArr,
         )
         this._objectStoresCache.set(name, objectStore2)
 
@@ -249,7 +249,6 @@ class FDBTransaction extends FakeEventTarget {
                     request.readyState = "done"
                     request.result = undefined
                     request.error = err
-
                     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-fire-an-error-event
                     if (this._state === "inactive") {
                         this._state = "active"
@@ -265,11 +264,16 @@ class FDBTransaction extends FakeEventTarget {
                 try {
                     event.eventPath = [this.db, this]
                     request.dispatchEvent(event)
+                    await new Promise((res) => setTimeout(res, 0))
                 } catch (err) {
+                    await new Promise((res) => setTimeout(res, 0))
                     if (this._state !== "committing") {
                         this._abort("AbortError")
+                    } else {
+                        this._state = "inactive"
+                        queueTask(this._start.bind(this))
+                        throw err
                     }
-                    throw err
                 }
 
                 // Default action of event
@@ -280,6 +284,7 @@ class FDBTransaction extends FakeEventTarget {
                 }
             }
 
+            this._state = "inactive"
             // Give it another chance for new handlers to be set before finishing
             queueTask(this._start.bind(this))
             return
@@ -289,21 +294,28 @@ class FDBTransaction extends FakeEventTarget {
         if (this._state !== "finished") {
             // Either aborted or committed already
             this._state = "finished"
+            if (!this.error) {
+                if (this.mode === "versionchange") {
+                    await callOpenDatabase(this.db, this._upgradeActions)
+                } else if (
+                    this._writeActions &&
+                    Object.values(this._writeActions.ops).some(
+                        (v) => v.length !== 0,
+                    )
+                ) {
+                    await call<ExecuteIDBTransactionMethod>(
+                        this.db._rawDatabase._port,
+                        "executeIDBTransactionMethod",
+                        this._writeActions,
+                    )
+                }
+            }
             // clear all modifications for the next transaction
             for (const objectStore of this._objectStoresCache.values()) {
                 objectStore._rawObjectStore.records.cleanupAfterCompletedTransaction()
                 for (const index of objectStore._indexesCache.values()) {
                     index._rawIndex.records.cleanupAfterCompletedTransaction()
                 }
-            }
-            if (this._upgradeActions.length !== 0) {
-                await callOpenDatabase(this.db, this._upgradeActions)
-            } else if (this._writeActions) {
-                await call<ExecuteIDBTransactionMethod>(
-                    this.db._rawDatabase._port,
-                    "executeIDBTransactionMethod",
-                    this._writeActions
-                )
             }
             if (!this.error) {
                 const event = new FakeEvent("complete")
@@ -314,7 +326,7 @@ class FDBTransaction extends FakeEventTarget {
 
     public commit() {
         if (this._state !== "active") {
-            throw new InvalidStateError()
+            throw new TransactionInactiveError()
         }
 
         this._state = "committing"

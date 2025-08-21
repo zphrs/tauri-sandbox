@@ -1,4 +1,4 @@
-import cmp from "./lib/cmp"
+import { cmp } from "./lib/cmp"
 import { DataError } from "./lib/errors"
 import type { Key } from "./lib/types"
 import valueToKey from "./lib/valueToKey"
@@ -33,7 +33,7 @@ class FDBKeyRange {
         lower: IDBValidKey,
         upper: IDBValidKey,
         lowerOpen: boolean = false,
-        upperOpen: boolean = false
+        upperOpen: boolean = false,
     ) {
         if (arguments.length < 2) {
             throw new TypeError()
@@ -51,14 +51,14 @@ class FDBKeyRange {
 
     public readonly lower: IDBValidKey | undefined
     public readonly upper: IDBValidKey | undefined
-    public readonly lowerOpen: boolean
-    public readonly upperOpen: boolean
+    public lowerOpen: boolean
+    public upperOpen: boolean
 
     constructor(
         lower: IDBValidKey | undefined,
         upper: IDBValidKey | undefined,
         lowerOpen: boolean,
-        upperOpen: boolean
+        upperOpen: boolean,
     ) {
         this.lower = lower
         this.upper = upper

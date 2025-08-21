@@ -14,6 +14,6 @@ export function handleDeleteDatabase(port: MessagePort, docId: string) {
         async ({ name }) => {
             await requestToPromise(indexedDB.deleteDatabase(`${docId}:${name}`))
             return null
-        }
+        },
     )
 }

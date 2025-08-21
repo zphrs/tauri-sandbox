@@ -92,11 +92,11 @@ class FDBIndex {
                 .filter((indexName) => {
                     const index =
                         this.objectStore._rawObjectStore.rawIndexes.get(
-                            indexName
+                            indexName,
                         )
                     return index && !index.deleted
                 })
-                .sort()
+                .sort(),
         )
 
         transaction._rollbackLog.push(() => {
@@ -107,10 +107,10 @@ class FDBIndex {
             this.objectStore._rawObjectStore.rawIndexes.delete(name)
             this.objectStore._rawObjectStore.rawIndexes.set(
                 oldName,
-                this._rawIndex
+                this._rawIndex,
             )
             this.objectStore.indexNames = new FakeDOMStringList(
-                ...oldIndexNames
+                ...oldIndexNames,
             )
         })
     }
@@ -118,7 +118,7 @@ class FDBIndex {
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-openCursor-IDBRequest-any-range-IDBCursorDirection-direction
     public openCursor(
         range?: FDBKeyRange | IDBValidKey | null | undefined,
-        direction?: FDBCursorDirection
+        direction?: FDBCursorDirection,
     ) {
         confirmActiveTransaction(this)
 
@@ -145,7 +145,7 @@ class FDBIndex {
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-openKeyCursor-IDBRequest-any-range-IDBCursorDirection-direction
     public openKeyCursor(
         range?: FDBKeyRange | IDBKeyRange | null | undefined,
-        direction?: FDBCursorDirection
+        direction?: FDBCursorDirection,
     ) {
         confirmActiveTransaction(this)
 
@@ -160,7 +160,7 @@ class FDBIndex {
         request.source = this
         request.transaction = this.objectStore.transaction
 
-        const cursor = new FDBCursor(this, range, direction, request, true)
+        const cursor = new FDBCursor(this, range, direction, request)
 
         return this.objectStore.transaction._execRequestAsync({
             operation: cursor._iterate.bind(cursor),
@@ -195,7 +195,7 @@ class FDBIndex {
             operation: this._rawIndex.getAllValues.bind(
                 this._rawIndex,
                 range,
-                count
+                count,
             ),
             source: this,
         })
@@ -228,7 +228,7 @@ class FDBIndex {
             operation: this._rawIndex.getAllKeys.bind(
                 this._rawIndex,
                 range,
-                count
+                count,
             ),
             source: this,
         })

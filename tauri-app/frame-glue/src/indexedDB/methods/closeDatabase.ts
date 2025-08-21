@@ -18,6 +18,6 @@ export function handleCloseDatabase(port: MessagePort, docId: string) {
                 db.close()
             }
             return null
-        }
+        },
     )
 }

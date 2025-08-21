@@ -32,7 +32,7 @@ const validateKeyPath = (keyPath: KeyPath, parent?: "array" | "string") => {
         }
         if (keyPath.indexOf(" ") >= 0) {
             throw new SyntaxError(
-                "The keypath argument contains an invalid key path (no spaces allowed)."
+                "The keypath argument contains an invalid key path (no spaces allowed).",
             )
         }
     }
@@ -41,7 +41,7 @@ const validateKeyPath = (keyPath: KeyPath, parent?: "array" | "string") => {
         if (parent) {
             // No nested arrays
             throw new SyntaxError(
-                "The keypath argument contains an invalid key path (nested arrays)."
+                "The keypath argument contains an invalid key path (nested arrays).",
             )
         }
         for (const part of keyPath) {

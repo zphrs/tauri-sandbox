@@ -62,19 +62,12 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                             const store = db.createObjectStore(name, options)
                             handleObjectStoreActions(
                                 upgradeAction.params.doOnUpgrade,
-                                store
+                                store,
                             )
                             break
                         }
                         case "deleteObjectStore": {
-                            let { name } = upgradeAction.params
-                            if (
-                                db.transaction(name).objectStore(name)
-                                    .keyPath === null
-                            ) {
-                                db.deleteObjectStore(`${name}:metadata`)
-                                name = `${name}:main`
-                            }
+                            const { name } = upgradeAction.params
                             db.deleteObjectStore(name)
                             break
                         }
@@ -86,9 +79,13 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                     const db = req.result
                     openedDbs[`${docId}:${name}`] = db
                     const names = db.objectStoreNames
-                    const tx = db.transaction(names, "readonly")
+                    if (names.length === 0) {
+                        res({ objectStores: [] })
+                        return
+                    }
                     const out: OpenIDBDatabaseMethod["res"]["result"]["objectStores"] =
                         []
+                    const tx = db.transaction(names, "readonly")
 
                     for (const name of names) {
                         const store = tx.objectStore(name)
@@ -115,13 +112,13 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                     res({ objectStores: out })
                 }
             })
-        }
+        },
     )
 }
 
 function handleObjectStoreActions(
     doOnUpgrade: (ObjectStoreUpgradeActions | Write)[],
-    store: IDBObjectStore
+    store: IDBObjectStore,
 ) {
     for (const ua of doOnUpgrade) {
         switch (ua.method) {

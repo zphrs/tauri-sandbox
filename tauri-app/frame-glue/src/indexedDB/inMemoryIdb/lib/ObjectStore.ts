@@ -7,7 +7,7 @@ import type {
     Read,
 } from "../../methods/readFromStore"
 import FDBKeyRange from "../FDBKeyRange"
-import cmp from "./cmp"
+import { cmp } from "./cmp"
 import Database from "./Database"
 import { ConstraintError, DataError } from "./errors"
 import extractKey from "./extractKey"
@@ -31,7 +31,7 @@ class ObjectStore {
         rawDatabase: Database,
         name: string,
         keyPath: KeyPath | null,
-        autoIncrement: boolean
+        autoIncrement: boolean,
     ) {
         this.rawDatabase = rawDatabase
         this.keyGenerator = autoIncrement === true ? new KeyGenerator() : null
@@ -51,19 +51,19 @@ class ObjectStore {
             k = key
         }
 
-        return (await this.getAllRecords(k, 1, true)).map((r) => r.key)
+        return (await this._getAllRecords(k, 1, true)).map((r) => r.key)
     }
 
     // http://w3c.github.io/IndexedDB/#retrieve-multiple-keys-from-an-object-store
     public async getAllKeys(range: FDBKeyRange | undefined, count?: number) {
-        return (await this.getAllRecords(range, count, true)).map((r) => r.key)
+        return (await this._getAllRecords(range, count, true)).map((r) => r.key)
     }
 
     private async executeReadMethod<
-        Method extends ExecuteReadMethod<Read, unknown>
+        Method extends ExecuteReadMethod<Read, unknown>,
     >(
         method: Method["req"]["params"]["call"]["method"],
-        params: Method["req"]["params"]["call"]["params"]
+        params: Method["req"]["params"]["call"]["params"],
     ) {
         const readCall = { method, params } as Method["req"]["params"]["call"]
         return await call<Method>(this.rawDatabase._port, "executeReadMethod", {
@@ -78,21 +78,20 @@ class ObjectStore {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-retrieving-a-value-from-an-object-store
     public async getValue(key: FDBKeyRange | Key) {
-        console.log("GETTING VALUE FROM STORE", this.name, key)
         let k: FDBKeyRange
         if (!(key instanceof FDBKeyRange)) {
             k = FDBKeyRange.only(key)
         } else {
             k = key
         }
-        const val = (await this.getAllRecords(k, 1)).map((r) => r.value)
+        const val = (await this._getAllRecords(k, 1)).map((r) => r.value)
         return val[0]
     }
 
-    private async getAllRecords(
+    public async _getAllRecords(
         range: FDBKeyRange | undefined,
         count: number | undefined,
-        ignoreValues: boolean = false
+        ignoreValues: boolean = false,
     ): Promise<Record[]> {
         if (count === undefined || count === 0) {
             count = Infinity
@@ -135,8 +134,6 @@ class ObjectStore {
         //     }
         // }
 
-        console.log({ fetchedRecords, cachedRecords })
-
         // mergesort
         const out: Record[] = []
         let i = 0,
@@ -171,12 +168,11 @@ class ObjectStore {
         if (out.length === count) {
             return out
         }
-        if (fetchedRecords.length > i) {
-            out.push(...fetchedRecords.slice(i, i + (count - out.length)))
-        }
-        if (cachedRecords.length > j) {
-            out.push(...cachedRecords.slice(j, j + (count - out.length)))
-        }
+
+        out.push(...fetchedRecords.slice(i, i + (count - out.length)))
+
+        out.push(...cachedRecords.slice(j, j + (count - out.length)))
+
         return out
     }
 
@@ -184,15 +180,23 @@ class ObjectStore {
     // cannot serve from cache because there can always be a value which is
     // somewhere along the range that isn't in the cache
     public async getAllValues(range: FDBKeyRange, count?: number) {
-        return (await this.getAllRecords(range, count)).map((r) => r.value)
+        return (await this._getAllRecords(range, count)).map((r) => r.value)
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-storing-a-record-into-an-object-store
     public async storeRecord(
         newRecord: Record,
         noOverwrite: boolean,
-        rollbackLog?: RollbackLog
+        rollbackLog?: RollbackLog,
     ) {
+        if (
+            newRecord.key instanceof ArrayBuffer &&
+            // detached is new as of es2024
+            "detached" in newRecord.key &&
+            newRecord.key.detached
+        ) {
+            throw new DataError()
+        }
         if (this.keyPath !== null) {
             const key = extractKey(this.keyPath, newRecord.value).key
             if (key !== undefined) {
@@ -217,7 +221,7 @@ class ObjectStore {
             if (this.keyPath !== null) {
                 if (Array.isArray(this.keyPath)) {
                     throw new Error(
-                        "Cannot have an array key path in an object store with a key generator"
+                        "Cannot have an array key path in an object store with a key generator",
                     )
                 }
                 let remainingKeyPath = this.keyPath
@@ -260,7 +264,6 @@ class ObjectStore {
         ) {
             this.keyGenerator.setIfLarger(newRecord.key)
         }
-
         let recordExists: boolean =
             this.records.get(newRecord.key) !== undefined
         if (!recordExists) {
@@ -274,19 +277,16 @@ class ObjectStore {
                         method: "count",
                         params: { query: newRecord.key as IDBValidKey },
                     },
-                }
+                },
             )
             recordExists = ct !== 0
         }
         if (recordExists) {
             if (noOverwrite) {
-                console.log("\nWOW SCARYYYY", recordExists, "\n")
                 throw new ConstraintError()
             }
             this.deleteRecord(newRecord.key, rollbackLog)
         }
-
-        console.log("Adding record:", newRecord)
 
         this.records.add(newRecord)
 

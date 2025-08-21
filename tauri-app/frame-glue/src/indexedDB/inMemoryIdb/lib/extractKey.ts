@@ -4,7 +4,7 @@ import valueToKey from "./valueToKey"
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-extracting-a-key-from-a-value-using-a-key-path
 const extractKey = (
     keyPath: KeyPath,
-    value: Value
+    value: Value,
 ):
     | {
           type: "found"

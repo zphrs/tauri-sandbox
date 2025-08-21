@@ -32,7 +32,7 @@ class Event {
 
     constructor(
         type: EventType,
-        eventInitDict: { bubbles?: boolean; cancelable?: boolean } = {}
+        eventInitDict: { bubbles?: boolean; cancelable?: boolean } = {},
     ) {
         this.type = type
 

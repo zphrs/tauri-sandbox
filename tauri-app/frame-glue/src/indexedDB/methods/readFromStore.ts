@@ -3,6 +3,7 @@ import {
     type Method,
     type Notification,
 } from "../../rpcOverPorts"
+import { cmp } from "../inMemoryIdb/lib/cmp"
 import { openedDbs } from "./OpenIDBDatabase"
 import { deserializeQuery, type SerializedQuery } from "./SerializedRange"
 
@@ -85,6 +86,16 @@ export type GetWithKey = Notification<
     }
 >
 
+export type GetNextFromCursor = Notification<
+    "getNextFromCursor",
+    {
+        range: SerializedQuery | undefined
+        direction: IDBCursorDirection
+        indexName?: string
+        prevPrimaryKey?: IDBValidKey | undefined
+    }
+>
+
 export type Read =
     | Get
     | GetAll
@@ -96,6 +107,7 @@ export type Read =
     | GetAllKeysFromIndex
     | GetAllFromIndex
     | GetAllRecordsFromIndex
+    | GetNextFromCursor
 
 export type GetMethod = ExecuteReadMethod<Get, unknown>
 export type GetAllMethod = ExecuteReadMethod<GetAll, unknown[]>
@@ -118,13 +130,17 @@ export type GetAllRecordsFromIndexMethod = ExecuteReadMethod<
     GetAllRecordsFromIndex,
     [
         GetAllFromIndexMethod["res"]["result"],
-        GetAllKeysFromIndexMethod["res"]["result"]
+        GetAllKeysFromIndexMethod["res"]["result"],
     ]
 >
 
 export type GetWithKeyMethod = ExecuteReadMethod<
     GetWithKey,
     [GetMethod["res"]["result"], GetKeyMethod["res"]["result"]]
+>
+export type GetNextFromCursorMethod = ExecuteReadMethod<
+    GetNextFromCursor,
+    { key: IDBValidKey; value: unknown; primaryKey: unknown } | undefined
 >
 
 export type ExecuteReadMethod<R extends Read, Return> = Method<
@@ -134,8 +150,17 @@ export type ExecuteReadMethod<R extends Read, Return> = Method<
 >
 
 export function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
-    return new Promise((res) => {
-        request.onsuccess = (e) => res((e.target as IDBRequest<T>).result)
+    return new Promise((res, rej) => {
+        request.onsuccess = (e) => {
+            res((e.target as IDBRequest<T>).result)
+            request.onsuccess = null
+            request.onerror = null
+        }
+        request.onerror = (e) => {
+            rej((e.target as IDBRequest<T>).error)
+            request.onsuccess = null
+            request.onerror = null
+        }
     })
 }
 
@@ -145,7 +170,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
         "executeReadMethod",
         async (req) => {
             const { call, dbName, store } = req
-            console.log(call, dbName, store)
+
             let db: IDBDatabase | undefined = openedDbs[`${docId}:${dbName}`]
             if (db === undefined) {
                 const dbs = await indexedDB.databases()
@@ -154,7 +179,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                         (res) => {
                             const request = indexedDB.open(`${docId}:${dbName}`)
                             request.onsuccess = () => res(request.result)
-                        }
+                        },
                     )
                 } else {
                     // db is not created; return nothing for all requests
@@ -174,6 +199,8 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                             return [[], []]
                         case "getWithKey":
                             return [undefined, undefined]
+                        case "getNextFromCursor":
+                            return undefined
                     }
                 }
             }
@@ -186,11 +213,11 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                         method: "getAll",
                         params: call.params,
                     },
-                    objStore
+                    objStore,
                 )
                 const req2 = methodToRequest(
                     { method: "getAllKeys", params: call.params },
-                    objStore
+                    objStore,
                 )
                 return Promise.all([req1, req2].map(requestToPromise))
             } else if (call.method === "getWithKey") {
@@ -199,11 +226,11 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                         method: "get",
                         params: call.params,
                     },
-                    objStore
+                    objStore,
                 )
                 const req2 = methodToRequest(
                     { method: "getKey", params: call.params },
-                    objStore
+                    objStore,
                 )
                 return Promise.all([req1, req2].map(requestToPromise))
             } else if (call.method === "getAllRecordsFromIndex") {
@@ -212,23 +239,53 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                         method: "getAllFromIndex",
                         params: call.params,
                     },
-                    objStore
+                    objStore,
                 )
                 const req2 = methodToRequest(
                     { method: "getAllKeysFromIndex", params: call.params },
-                    objStore
+                    objStore,
                 )
                 return Promise.all([req1, req2].map(requestToPromise))
+            } else if (call.method === "getNextFromCursor") {
+                const cursorRequest = methodToRequest(call, objStore)
+                const cursorOrNull: IDBCursorWithValue | null =
+                    await requestToPromise(cursorRequest)
+                console.log("\ngetting next from cursor", call.params)
+                if (cursorOrNull === null) {
+                    return undefined
+                }
+                let cursor = cursorOrNull
+                if (call.params.prevPrimaryKey !== undefined) {
+                    while (
+                        cmp(cursor.primaryKey, call.params.prevPrimaryKey) !== 0
+                    ) {
+                        console.log(cursor.primaryKey)
+                        cursor.continue()
+
+                        cursor = await requestToPromise(cursorRequest)
+                        if (cursor === null) return undefined
+                    }
+                    // one more to pass the previous primary key:
+                    cursor.continue()
+                    cursor = await requestToPromise(cursorRequest)
+                    if (cursor === null) return undefined
+                }
+
+                return {
+                    key: cursor.key,
+                    value: cursor.value,
+                    primaryKey: cursor.primaryKey,
+                }
             } else {
                 const request = methodToRequest(call, objStore)
                 return requestToPromise(request)
             }
-        }
+        },
     )
 }
 function methodToRequest(
     call: Exclude<Read, GetAllRecords | GetWithKey | GetAllRecordsFromIndex>,
-    objStore: IDBObjectStore
+    objStore: IDBObjectStore,
 ) {
     switch (call.method) {
         case "get": {
@@ -239,7 +296,7 @@ function methodToRequest(
             const { query, count } = call.params
             return objStore.getAll(
                 query !== undefined ? deserializeQuery(query) : query,
-                count
+                count,
             )
         }
         case "getKey": {
@@ -250,13 +307,13 @@ function methodToRequest(
             const { query, count } = call.params
             return objStore.getAllKeys(
                 query ? deserializeQuery(query) : null,
-                count
+                count,
             )
         }
         case "count": {
             const { query } = call.params
             return objStore.count(
-                query === undefined ? undefined : deserializeQuery(query)
+                query === undefined ? undefined : deserializeQuery(query),
             )
         }
         case "getAllKeysFromIndex": {
@@ -264,13 +321,25 @@ function methodToRequest(
             const index = objStore.index(indexName)
             return index.getAllKeys(
                 query ? deserializeQuery(query) : null,
-                count
+                count,
             )
         }
         case "getAllFromIndex": {
             const { indexName, query, count } = call.params
             const index = objStore.index(indexName)
             return index.getAll(query ? deserializeQuery(query) : null, count)
+        }
+        case "getNextFromCursor": {
+            const { range: serializedRange, direction, indexName } = call.params
+            const range = (
+                serializedRange ? deserializeQuery(serializedRange) : undefined
+            ) as IDBKeyRange
+
+            const cursor = indexName
+                ? objStore.index(indexName).openCursor(range, direction)
+                : objStore.openCursor(range, direction)
+
+            return cursor
         }
     }
 }

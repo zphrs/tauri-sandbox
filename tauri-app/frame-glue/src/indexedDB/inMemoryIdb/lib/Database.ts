@@ -32,14 +32,14 @@ class Database {
                 "getIDBDBStores",
                 {
                     name: this.name,
-                }
+                },
             )
         ).map(({ name, parameters }) => {
             const os = new ObjectStore(
                 this,
                 name,
                 parameters.keyPath ?? null,
-                !!parameters.autoIncrement
+                !!parameters.autoIncrement,
             )
             return os
         })) {

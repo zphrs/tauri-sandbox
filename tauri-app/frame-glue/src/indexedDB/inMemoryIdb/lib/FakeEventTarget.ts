@@ -29,6 +29,7 @@ const stopped = (event: FakeEvent, listener: Listener) => {
 // http://www.w3.org/TR/dom/#concept-event-listener-invoke
 const invokeEventListeners = (event: FakeEvent, obj: FakeEventTarget) => {
     event.currentTarget = obj
+    let thrownError: unknown | undefined = undefined
 
     // The callback might cause obj.listeners to mutate as we traverse it.
     // Take a copy of the array so that nothing sneaks in and we don't lose
@@ -38,8 +39,14 @@ const invokeEventListeners = (event: FakeEvent, obj: FakeEventTarget) => {
             continue
         }
 
-        // @ts-ignore
-        listener.callback.call(event.currentTarget, event)
+        try {
+            // @ts-expect-error ts(2345)
+            listener.callback.call(event.currentTarget, event)
+        } catch (e: unknown) {
+            if (thrownError === undefined) {
+                thrownError = e
+            }
+        }
     }
 
     const typeToProp: { [key in EventType]: EventTypeProp } = {
@@ -64,9 +71,18 @@ const invokeEventListeners = (event: FakeEvent, obj: FakeEventTarget) => {
             type: event.type,
         }
         if (!stopped(event, listener)) {
-            // @ts-ignore
-            listener.callback.call(event.currentTarget, event)
+            try {
+                // @ts-expect-error ts(2345)
+                listener.callback.call(event.currentTarget, event)
+            } catch (e: unknown) {
+                if (thrownError === undefined) {
+                    thrownError = e
+                }
+            }
         }
+    }
+    if (thrownError !== undefined) {
+        throw thrownError
     }
 }
 
@@ -85,7 +101,7 @@ abstract class FakeEventTarget {
     public addEventListener(
         type: EventType,
         callback: EventCallback,
-        capture = false
+        capture = false,
     ) {
         this.listeners.push({
             callback,
@@ -97,7 +113,7 @@ abstract class FakeEventTarget {
     public removeEventListener(
         type: EventType,
         callback: EventCallback,
-        capture = false
+        capture = false,
     ) {
         const i = this.listeners.findIndex((listener) => {
             return (
@@ -115,6 +131,7 @@ abstract class FakeEventTarget {
         if (event.dispatched || !event.initialized) {
             throw new InvalidStateError("The object is in an invalid state.")
         }
+
         event.isTrusted = false
 
         event.dispatched = true
