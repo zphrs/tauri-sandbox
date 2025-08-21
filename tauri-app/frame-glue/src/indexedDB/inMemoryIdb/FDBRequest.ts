@@ -7,7 +7,7 @@ import FakeEventTarget from "./lib/FakeEventTarget"
 import type { EventCallback } from "./lib/types"
 
 class FDBRequest extends FakeEventTarget {
-    public _result: any = null
+    public _result: unknown = null
     public _error: Error | null | undefined = null
     public source: FDBCursor | FDBIndex | FDBObjectStore | null = null
     public transaction: FDBTransaction | null = null
@@ -22,7 +22,7 @@ class FDBRequest extends FakeEventTarget {
         return this._error
     }
 
-    public set error(value: any) {
+    public set error(value: Error | null | undefined) {
         this._error = value
     }
 
@@ -33,7 +33,7 @@ class FDBRequest extends FakeEventTarget {
         return this._result
     }
 
-    public set result(value: any) {
+    public set result(value: unknown) {
         this._result = value
     }
 

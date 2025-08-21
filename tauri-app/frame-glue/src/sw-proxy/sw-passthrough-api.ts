@@ -67,8 +67,8 @@ async function receiveProxiedResponse(
                 if (resId != id) return
                 controller.abort() // same as fetch request
                 const out = new Response(
-                    msgEvent.data.result.arrBuf as ArrayBuffer,
-                    msgEvent.data.result.responseInit as ResponseInit,
+                    msgEvent.data.result.arrBuf,
+                    msgEvent.data.result.responseInit,
                 )
                 res(out)
             },
@@ -108,7 +108,7 @@ export async function proxyFetchEvent(
     return receiveProxiedResponse(port, id)
 }
 
-export async function sendInitEvent(port: MessagePort) {
+export function sendInitEvent(port: MessagePort) {
     port.postMessage({
         id: "init",
     })
@@ -127,14 +127,16 @@ export async function handleProxiedFetchEvent(
     await new Promise<void>((res) => {
         port.addEventListener(
             "message",
-            async (ev: MessageEvent<ProxiedFetchRequest>) => {
+            (ev: MessageEvent<ProxiedFetchRequest>) => {
                 if (ev.data.id == "init") {
                     res()
                     return
                 }
                 const fetchEvent = proxiedRequestToFetchEvent(ev.data.params)
-                fetchEvent.respondWith = async (r) => {
-                    sendProxiedResponse(port, ev.data.id, await r)
+                fetchEvent.respondWith = (r) => {
+                    void (async () => {
+                        void sendProxiedResponse(port, ev.data.id, await r)
+                    })()
                 }
                 onfetch(fetchEvent)
             },
@@ -142,5 +144,5 @@ export async function handleProxiedFetchEvent(
         )
         port.start()
     })
-    return controller.abort
+    return controller.abort.bind(controller)
 }

@@ -47,7 +47,7 @@ describe("rpc over ports", () => {
         for (let i = 0; i < 10; i++) {
             view[i] = i
         }
-        ArrayBuffer
+
         const res = await call<TransferArrayBufferMethod>(
             port2,
             "transferArrayBuffer",
@@ -59,3 +59,5 @@ describe("rpc over ports", () => {
         }
     })
 })
+
+const t: { a: unknown } = { b: "lol" }

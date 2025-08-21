@@ -42,7 +42,7 @@ export function createProxiedEventTarget(port: MessagePort): EventTarget {
                 },
             } satisfies DispatchEventCall)
         }
-        for (let [listener, options] of listeners[event.type]) {
+        for (const [listener, options] of listeners[event.type]) {
             if (typeof listener == "object") {
                 listener.handleEvent(event)
             } else {
@@ -88,7 +88,7 @@ export function createProxiedEventTarget(port: MessagePort): EventTarget {
                 })
             }
         },
-        removeEventListener(type, callback, _options) {
+        removeEventListener(type, callback) {
             if (callback == null) return
             removeFromListeners(type, callback)
         },

@@ -250,7 +250,6 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                 const cursorRequest = methodToRequest(call, objStore)
                 const cursorOrNull: IDBCursorWithValue | null =
                     await requestToPromise(cursorRequest)
-                console.log("\ngetting next from cursor", call.params)
                 if (cursorOrNull === null) {
                     return undefined
                 }
@@ -259,7 +258,6 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                     while (
                         cmp(cursor.primaryKey, call.params.prevPrimaryKey) !== 0
                     ) {
-                        console.log(cursor.primaryKey)
                         cursor.continue()
 
                         cursor = await requestToPromise(cursorRequest)

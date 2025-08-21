@@ -54,50 +54,18 @@ describe("IDBCursor.advance()", () => {
         const index = store.index("index")
         const request = index.openCursor(null, "prev")
 
-        let count = 0
-
-        return new Promise<void>((resolve, reject) => {
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest)
-                    .result as IDBCursorWithValue | null
-
-                if (!cursor) {
-                    expect(count).toBe(3)
-                    resolve()
-                    return
-                }
-
-                // In reverse order starting from the end
-                switch (count) {
-                    case 0:
-                        // Should start from "taco" (last in current order)
-                        expect(cursor.value).toBe("taco")
-                        expect(cursor.primaryKey).toBe(2)
-                        break
-                    case 1:
-                        // After advance(2) backwards
-                        expect(cursor.value).toBe("pie")
-                        expect(cursor.primaryKey).toBe(1)
-                        break
-                    case 2:
-                        // After advance(2) backwards
-                        expect(cursor.value).toBe("cupcake")
-                        expect(cursor.primaryKey).toBe(5)
-                        break
-                    default:
-                        reject(new Error(`Unexpected count: ${count}`))
-                        return
-                }
-
-                count++
-                console.log(cursor.advance)
-                cursor.advance(2)
-            }
-
-            request.onerror = () => {
-                reject(new Error("Unexpected error"))
-            }
-        })
+        const expectedValues = [
+            { value: "taco", primaryKey: 2 },
+            { value: "pie", primaryKey: 1 },
+            { value: "cupcake", primaryKey: 5 },
+        ]
+        for (const { value, primaryKey } of expectedValues) {
+            const cursor = (await requestToPromise(request))!
+            expect(cursor).not.toBeNull()
+            expect(cursor?.value).toBe(value)
+            expect(cursor?.primaryKey).toBe(primaryKey)
+            cursor.advance(2)
+        }
     })
 
     test("skip far forward", async ({ task }) => {
@@ -107,8 +75,9 @@ describe("IDBCursor.advance()", () => {
         const store = tx.objectStore("test")
         const index = store.index("index")
         const cursorRequest = index.openCursor()
-        let cursor: IDBCursorWithValue =
-            (await requestToPromise(cursorRequest))!
+        let cursor: IDBCursorWithValue = (await requestToPromise(
+            cursorRequest,
+        ))!
 
         expect(cursor.value).toBe("cupcake")
         expect(cursor.primaryKey).toBe(5)
@@ -158,37 +127,13 @@ describe("IDBCursor.advance()", () => {
         const index = store.index("index")
         const request = index.openCursor("pancake")
 
-        let count = 0
+        const cursor = (await requestToPromise(request))!
+        expect(cursor).not.toBeNull()
 
-        return new Promise<void>((resolve, reject) => {
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest)
-                    .result as IDBCursorWithValue | null
+        expect(cursor.value).toBe("pancake")
+        expect(cursor?.primaryKey).toBe(3)
 
-                if (!cursor) {
-                    expect(count).toBe(1)
-                    resolve()
-                    return
-                }
-
-                switch (count) {
-                    case 0:
-                        expect(cursor.value).toBe("pancake")
-                        expect(cursor.primaryKey).toBe(3)
-                        break
-                    default:
-                        reject(new Error(`Unexpected count: ${count}`))
-                        return
-                }
-
-                count++
-                cursor.advance(1)
-            }
-
-            request.onerror = () => {
-                reject(new Error("Unexpected error"))
-            }
-        })
+        cursor.advance(1)
     })
 
     test("within single key range, with several results", async ({ task }) => {
@@ -199,40 +144,20 @@ describe("IDBCursor.advance()", () => {
         const index = store.index("index")
         const request = index.openCursor("pie")
 
-        let count = 0
+        const expectedValues = [
+            { value: "pie", primaryKey: 1 },
+            { value: "pie", primaryKey: 4 },
+        ]
 
-        return new Promise<void>((resolve, reject) => {
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest)
-                    .result as IDBCursorWithValue | null
+        for (const expected of expectedValues) {
+            const cursor = (await requestToPromise(request))!
+            expect(cursor).not.toBeNull()
+            expect(cursor.value).toBe(expected.value)
+            expect(cursor.primaryKey).toBe(expected.primaryKey)
+            cursor.advance(1)
+        }
 
-                if (!cursor) {
-                    expect(count).toBe(2)
-                    resolve()
-                    return
-                }
-
-                switch (count) {
-                    case 0:
-                        expect(cursor.value).toBe("pie")
-                        expect(cursor.primaryKey).toBe(1)
-                        break
-                    case 1:
-                        expect(cursor.value).toBe("pie")
-                        expect(cursor.primaryKey).toBe(4)
-                        break
-                    default:
-                        reject(new Error(`Unexpected count: ${count}`))
-                        return
-                }
-
-                count++
-                cursor.advance(1)
-            }
-
-            request.onerror = () => {
-                reject(new Error("Unexpected error"))
-            }
-        })
+        const finalCursor = await requestToPromise(request)
+        expect(finalCursor).toBeNull()
     })
 })

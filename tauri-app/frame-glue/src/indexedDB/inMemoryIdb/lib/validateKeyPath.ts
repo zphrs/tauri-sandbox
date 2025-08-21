@@ -27,8 +27,8 @@ const validateKeyPath = (keyPath: KeyPath, parent?: "array" | "string") => {
             if (keyPath.length >= 1 && validIdentifierRegex.test(keyPath)) {
                 return
             }
-        } catch (err: any) {
-            throw new SyntaxError(err.message)
+        } catch (err: unknown) {
+            throw new SyntaxError((err as Error).message)
         }
         if (keyPath.indexOf(" ") >= 0) {
             throw new SyntaxError(

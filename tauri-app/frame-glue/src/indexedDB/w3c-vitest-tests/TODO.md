@@ -34,9 +34,9 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbcursor-advance-invalid.any.js
 -   [x] idbcursor-advance.any.js
 -   [x] idbcursor-continue-exception-order.any.js
--   [ ] idbcursor-continue.any.js
--   [ ] idbcursor-continuePrimaryKey-exception-order.any.js
--   [ ] idbcursor-continuePrimaryKey-exceptions.any.js
+-   [x] idbcursor-continue.any.js
+-   [x] idbcursor-continuePrimaryKey-exception-order.any.js
+-   [x] idbcursor-continuePrimaryKey-exceptions.any.js
 -   [ ] idbcursor-continuePrimaryKey.any.js
 -   [ ] idbcursor-delete-exception-order.any.js
 -   [ ] idbcursor-direction-index-keyrange.any.js

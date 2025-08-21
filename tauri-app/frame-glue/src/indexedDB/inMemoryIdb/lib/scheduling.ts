@@ -10,6 +10,7 @@
 // - https://github.com/scala-js/scala-js-macrotask-executor/pull/17
 function getSetImmediateFromJsdom() {
     if (typeof navigator !== "undefined" && /jsdom/.test(navigator.userAgent)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const outerRealmFunctionConstructor = Node.constructor as any
         return new outerRealmFunctionConstructor("return setImmediate")()
     } else {

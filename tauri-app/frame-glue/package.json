@@ -12,7 +12,8 @@
         "preview": "vite preview",
         "test": "vitest",
         "format": "prettier --write .",
-        "check": "tsc --noEmit"
+        "check": "tsc --noEmit && eslint",
+        "lint": "eslint"
     },
     "devDependencies": {
         "@eslint/js": "^9.28.0",
@@ -29,6 +30,8 @@
         "vitest": "^3.2.4"
     },
     "dependencies": {
+        "@typescript-eslint/eslint-plugin": "^8.40.0",
+        "@typescript-eslint/parser": "^8.40.0",
         "jsdom": "^26.1.0"
     }
 }

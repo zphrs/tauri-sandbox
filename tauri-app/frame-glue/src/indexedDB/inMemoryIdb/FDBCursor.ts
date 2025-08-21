@@ -41,8 +41,10 @@ const getEffectiveObjectStore = (cursor: FDBCursor) => {
 // of the way there.
 const makeKeyRange = (
     range: FDBKeyRange | IDBValidKey | undefined,
-    lowers: (Key | undefined)[],
-    uppers: (Key | undefined)[],
+    // first is the provided key, second is this._position
+    lowers: [] | [Key | undefined, Key | undefined],
+    // first is the provided key, second is this._position
+    uppers: [] | [Key | undefined, Key | undefined],
 ) => {
     // Start with bounds from range
     let [lower, upper] =
@@ -55,17 +57,17 @@ const makeKeyRange = (
         if (lowerTemp === undefined) {
             continue
         }
-
-        if (lower === undefined || cmp(lower, lowerTemp) === 1) {
+        if (lower === undefined || cmp(lower, lowerTemp) === -1) {
             lower = lowerTemp
         }
     }
+
     for (const upperTemp of uppers) {
         if (upperTemp === undefined) {
             continue
         }
 
-        if (upper === undefined || cmp(upper, upperTemp) === -1) {
+        if (upper === undefined || cmp(upper, upperTemp) === 1) {
             upper = upperTemp
         }
     }
@@ -166,15 +168,28 @@ class FDBCursor {
         let foundRecord: Record | undefined
         const isNext = this.direction.includes("next")
         const isUnique = this.direction.includes("unique")
-        const range = makeKeyRange(
-            this._range,
-            isNext ? [key, this._position] : [],
-            isNext ? [] : [key, this._position],
-        )
-        if (range && this._range?.lowerOpen) {
+        let range
+        try {
+            range = makeKeyRange(
+                this._range,
+                isNext ? [key, this._position] : [],
+                isNext ? [] : [key, this._position],
+            )
+        } catch {
+            return null
+        }
+        if (
+            range &&
+            this._range?.lowerOpen &&
+            this._range?.lower === range?.lower
+        ) {
             range.lowerOpen = true
         }
-        if (range && this._range?.upperOpen) {
+        if (
+            range &&
+            this._range?.upperOpen &&
+            this._range?.lower === range?.lower
+        ) {
             range.upperOpen = true
         }
         if (
@@ -586,6 +601,7 @@ class FDBCursor {
         if (this._request) {
             this._request.readyState = "pending"
         }
+
         transaction._execRequestAsync({
             operation: this._iterate.bind(this, key),
             request: this._request,

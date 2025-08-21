@@ -20,8 +20,8 @@ export type RWLock<T> = {
     }
 }
 
-export const MANUAL: () => Promise<any> = () => {
-    return new Promise((_res) => {})
+export const MANUAL: () => Promise<never> = () => {
+    return new Promise(() => {})
 }
 
 function maybeGiveNext<T>(lock: RWLock<T>) {

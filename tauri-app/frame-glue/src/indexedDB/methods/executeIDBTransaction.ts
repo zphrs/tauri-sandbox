@@ -82,7 +82,13 @@ export function handleExecuteIDBTransactionMethod(
                     performWriteOperation(change, store).then((opReq) => {
                         // we know that this is likely what was carried out on the
                         // parent thread in order to handle the error without
-                        // aborting the transaction
+                        // aborting the transaction. See the test file,
+                        // ../w3c-vitest-tests/idb-explicit-commit.any.test.ts
+                        // specifically the test around line 388: "Transactions
+                        // that handle all errors properly should behave as
+                        // expected when an explicit commit is called in an
+                        // onerror handler."
+                        // we warn of the error just in case.
                         opReq.onerror = (e) => {
                             console.warn("error while executing write op: ", e)
                             e.preventDefault()
