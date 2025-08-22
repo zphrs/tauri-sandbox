@@ -7,7 +7,8 @@ import FakeEventTarget from "./lib/FakeEventTarget"
 import type { EventCallback } from "./lib/types"
 
 class FDBRequest extends FakeEventTarget {
-    public _result: unknown = null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public _result: any = null
     public _error: Error | null | undefined = null
     public source: FDBCursor | FDBIndex | FDBObjectStore | null = null
     public transaction: FDBTransaction | null = null
@@ -33,7 +34,8 @@ class FDBRequest extends FakeEventTarget {
         return this._result
     }
 
-    public set result(value: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public set result(value: any) {
         this._result = value
     }
 
