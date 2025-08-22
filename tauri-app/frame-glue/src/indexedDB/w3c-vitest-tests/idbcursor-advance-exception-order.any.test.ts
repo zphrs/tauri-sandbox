@@ -46,7 +46,7 @@ describe("IDBCursor advance() Exception Ordering", () => {
             const openRequest = idb.open(dbName, 1)
 
             openRequest.onupgradeneeded = () => {
-                const db = openRequest.result
+                const db = openRequest.result!
 
                 // Create both object stores
                 db.createObjectStore("s")
@@ -57,7 +57,7 @@ describe("IDBCursor advance() Exception Ordering", () => {
                 const cursorRequest = s2.openKeyCursor()
 
                 cursorRequest.onsuccess = () => {
-                    cursor = cursorRequest.result
+                    cursor = cursorRequest.result!
                     expect(cursor).not.toBeNull()
 
                     // Delete the object store while cursor is still active
@@ -88,7 +88,7 @@ describe("IDBCursor advance() Exception Ordering", () => {
 
             openRequest.onsuccess = () => {
                 // Clean up
-                const db = openRequest.result
+                const db = openRequest.result!
                 onTestFinished(() => {
                     db.close()
                     idb.deleteDatabase(dbName)

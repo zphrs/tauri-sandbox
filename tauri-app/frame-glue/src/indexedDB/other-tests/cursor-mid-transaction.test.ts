@@ -12,7 +12,7 @@ describe("cross-threaded cursor iteration", () => {
     // 5: write B at key 0
     // 6: read all keys from index
     // 7: make sure it matches [{key: 2, value: A}, {key: 0, value: B}, {key: 1, value: C}]
-    test.skip("cursor iteration split between fetched and cached", async ({
+    test("cursor iteration split between fetched and cached", async ({
         task,
     }) => {
         const db = await createDatabase(task, (db) => {

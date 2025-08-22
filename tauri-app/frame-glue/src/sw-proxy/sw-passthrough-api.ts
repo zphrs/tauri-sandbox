@@ -133,10 +133,8 @@ export async function handleProxiedFetchEvent(
                     return
                 }
                 const fetchEvent = proxiedRequestToFetchEvent(ev.data.params)
-                fetchEvent.respondWith = (r) => {
-                    void (async () => {
-                        void sendProxiedResponse(port, ev.data.id, await r)
-                    })()
+                fetchEvent.respondWith = async (r) => {
+                    sendProxiedResponse(port, ev.data.id, await r)
                 }
                 onfetch(fetchEvent)
             },

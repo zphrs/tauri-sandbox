@@ -37,15 +37,15 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbcursor-continue.any.js
 -   [x] idbcursor-continuePrimaryKey-exception-order.any.js
 -   [x] idbcursor-continuePrimaryKey-exceptions.any.js
--   [ ] idbcursor-continuePrimaryKey.any.js
--   [ ] idbcursor-delete-exception-order.any.js
--   [ ] idbcursor-direction-index-keyrange.any.js
--   [ ] idbcursor-direction-index.any.js
--   [ ] idbcursor-direction-objectstore-keyrange.any.js
--   [ ] idbcursor-direction-objectstore.any.js
--   [ ] idbcursor-direction.any.js
--   [ ] idbcursor-iterating-update.any.js
--   [ ] idbcursor-key.any.js
+-   [/] idbcursor-continuePrimaryKey.any.js
+-   [x] idbcursor-delete-exception-order.any.js
+-   [x] idbcursor-direction-index-keyrange.any.js
+-   [x] idbcursor-direction-index.any.js
+-   [x] idbcursor-direction-objectstore-keyrange.any.js
+-   [x] idbcursor-direction-objectstore.any.js
+-   [x] idbcursor-direction.any.js
+-   [x] idbcursor-iterating-update.any.js
+-   [x] idbcursor-key.any.js
 -   [ ] idbcursor-primarykey.any.js
 -   [ ] idbcursor-request-source.any.js
 -   [ ] idbcursor-request.any.js

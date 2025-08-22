@@ -22,5 +22,5 @@
         "noUncheckedSideEffectImports": true
     },
     "include": ["src", "vite.config.ts"],
-    "exclude": ["src/indexedDB/w3c-tests"]
+    "exclude": ["src/indexedDB/w3c-tests", "lib"]
 }
