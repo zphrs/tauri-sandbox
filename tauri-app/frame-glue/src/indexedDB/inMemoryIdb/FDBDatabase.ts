@@ -161,7 +161,7 @@ class FDBDatabase extends FakeEventTarget {
                 doOnUpgrade: [],
             },
         })
-        return transaction.objectStore(name)
+        return transaction.objectStore(name, true)
     }
 
     public deleteObjectStore(name: string) {

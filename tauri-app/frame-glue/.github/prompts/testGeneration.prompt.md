@@ -1,7 +1,7 @@
 ---
 mode: agent
-tools:
-    [
+
+tools: [
         "codebase",
         "problems",
         "testFailure",
@@ -13,7 +13,7 @@ tools:
 description: "Generate the next test file in the TODO list"
 ---
 
-Write the next test.ts file listed in #file:../../src/indexedDB/w3c-vitest-tests/TODO.md based on the original test in #file:../../src/indexedDB/w3c-tests and the previously written tests in the directory #file:../../src/indexedDB/w3c-vitest-tests/concurrent and #file:../../src/indexedDB/w3c-vitest-tests/serial , especially #file:../../src/indexedDB/w3c-vitest-tests/concurrent/idbcursor-advance.any.test.ts and #file:../../src/indexedDB/w3c-vitest-tests/concurrent/event-dispatch-active-flag.any.test.ts . Be sure to use the convenience functions exported from #file:../../src/indexedDB/w3c-vitest-tests/resources/createDatabase.ts like #sym:requestToPromise , #sym:createDatabase , #sym:createNamedDatabase , and #sym:migrateNamedDatabase .
+Write the selected ${selection} test.ts file(s) listed in #file:../../src/indexedDB/w3c-vitest-tests/TODO.md (or next test after line ${input:line}) based on the original test in #file:../../src/indexedDB/w3c-tests and the previously written tests in the directory #file:../../src/indexedDB/w3c-vitest-tests/concurrent and #file:../../src/indexedDB/w3c-vitest-tests/serial , especially #file:../../src/indexedDB/w3c-vitest-tests/concurrent/idbcursor-advance.any.test.ts and #file:../../src/indexedDB/w3c-vitest-tests/concurrent/event-dispatch-active-flag.any.test.ts . Be sure to use the convenience functions exported from #file:../../src/indexedDB/w3c-vitest-tests/resources/createDatabase.ts like #sym:requestToPromise , #sym:createDatabase , #sym:createNamedDatabase , and #sym:migrateNamedDatabase .
 
 If you need to run `expect()` the raw event object from a request, note that `expect()` calls will only work correctly at the top level. To get any object out of a request, including a raw event object, you can follow this pattern:
 

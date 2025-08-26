@@ -35,7 +35,6 @@ export function serializeQuery<T extends IDBValidKey | IDBKeyRange | undefined>(
         return undefined as T extends undefined
             ? SerializedQuery | undefined
             : SerializedQuery
-    console.log(range, range instanceof FDBKeyRange)
     if (typeof range === "object" && range instanceof FDBKeyRange) {
         return {
             lower: range.lower,

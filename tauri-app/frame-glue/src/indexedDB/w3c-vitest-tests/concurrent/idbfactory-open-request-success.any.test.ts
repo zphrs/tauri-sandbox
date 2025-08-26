@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest"
-import { idb, requestToPromise } from "../resources/createDatabase"
+import {
+    cleanupDbRefAfterTest,
+    idb,
+    requestToPromise,
+} from "../resources/createDatabase"
 
 // Port of w3c test: idbfactory-open-request-success.any.js
 // Tests IDBOpenDBRequest properties on success
@@ -32,6 +36,7 @@ describe("IDBFactory open()", () => {
         const db = await requestToPromise(
             openReq as unknown as IDBRequest<IDBDatabase>,
         )
+        cleanupDbRefAfterTest(db)
 
         expect(sawComplete).toBe(true)
         expect(openReq.readyState).toBe("done")

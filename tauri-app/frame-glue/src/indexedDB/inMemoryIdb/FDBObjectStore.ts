@@ -100,18 +100,25 @@ class FDBObjectStore {
     public indexNames: FakeDOMStringList
 
     private _name: string
+    // necessary for test "IndexedDB object store creation and rename in an aborted transaction"
+    private _nameBeforeTxStart: string | undefined
 
     constructor(
         transaction: FDBTransaction,
         rawObjectStore: ObjectStore,
         updateWriteLog: (ObjectStoreUpgradeActions | Write)[],
+        justCreated: boolean,
     ) {
         this._rawObjectStore = rawObjectStore
         this._updateWriteLog = updateWriteLog
 
         this._name = rawObjectStore.name
+        if (!justCreated) {
+            this._nameBeforeTxStart = this._name
+        }
         this.keyPath = rawObjectStore.keyPath
         this.autoIncrement = rawObjectStore.autoIncrement
+
         this.transaction = transaction
         this.indexNames = new FakeDOMStringList(
             ...Array.from(rawObjectStore.rawIndexes.keys()).sort(),
@@ -121,17 +128,12 @@ class FDBObjectStore {
     get name() {
         return this._name
     }
-    // TODO: need to forward to parent thread
+
     // http://w3c.github.io/IndexedDB/#dom-idbobjectstore-name
     set name(name: string) {
         const transaction = this.transaction
 
-        this._updateWriteLog.push({
-            method: "renameObjectStore",
-            params: { newName: name },
-        })
-
-        if (!transaction.db._runningVersionchangeTransaction) {
+        if (transaction.mode !== "versionchange") {
             throw new InvalidStateError()
         }
 
@@ -182,7 +184,8 @@ class FDBObjectStore {
         )
 
         transaction._rollbackLog.push(() => {
-            this._name = oldName
+            if (this._nameBeforeTxStart !== undefined)
+                this._name = this._nameBeforeTxStart
             this._rawObjectStore.name = oldName
             this.transaction._objectStoresCache.delete(name)
             this.transaction._objectStoresCache.set(oldName, this)
@@ -199,6 +202,10 @@ class FDBObjectStore {
             transaction.objectStoreNames = new FakeDOMStringList(
                 ...oldTransactionObjectStoreNames,
             )
+        })
+        this._updateWriteLog.push({
+            method: "renameObjectStore",
+            params: { newName: name },
         })
     }
 
@@ -455,11 +462,10 @@ class FDBObjectStore {
                 ? optionalParameters.unique
                 : false
 
+        confirmActiveTransaction(this)
         if (this.transaction.mode !== "versionchange") {
             throw new InvalidStateError()
         }
-
-        confirmActiveTransaction(this)
 
         if (this.indexNames.contains(name)) {
             throw new ConstraintError()
@@ -485,8 +491,8 @@ class FDBObjectStore {
                 index2.deleted = true
             }
 
-            this.indexNames = new FakeDOMStringList(...indexNames)
             this._rawObjectStore.rawIndexes.delete(name)
+            this.indexNames = new FakeDOMStringList(...indexNames)
         })
 
         const index = new Index(
@@ -544,7 +550,6 @@ class FDBObjectStore {
         if (arguments.length === 0) {
             throw new TypeError()
         }
-
         if (this.transaction.mode !== "versionchange") {
             throw new InvalidStateError()
         }
@@ -552,7 +557,7 @@ class FDBObjectStore {
         confirmActiveTransaction(this)
 
         const rawIndex = this._rawObjectStore.rawIndexes.get(name)
-        if (rawIndex === undefined) {
+        if (rawIndex === undefined || !this.indexNames.contains(name)) {
             throw new NotFoundError()
         }
 

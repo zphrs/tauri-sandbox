@@ -22,13 +22,24 @@ export async function createDatabase(
     const dbName = t.id
     const dbname = dbName || "testdb-" + new Date().getTime() + Math.random()
     const req = idb.open(dbname)
-    req.onupgradeneeded = () => {
-        onUpgradeNeeded(req.result)
-    }
-    const out = await requestToPromise(
-        req as unknown as IDBRequest<IDBDatabase>,
-    )
-    cleanupDbRefAfterTest(out)
+    const out = new Promise<IDBDatabase>((res, rej) => {
+        req.onupgradeneeded = () => {
+            try {
+                onUpgradeNeeded(req.result)
+            } catch (e) {
+                rej(e)
+            }
+        }
+
+        requestToPromise(req as unknown as IDBRequest<IDBDatabase>)
+            .then((out) => {
+                res(out)
+                cleanupDbRefAfterTest(out)
+            })
+            .catch((err) => {
+                rej(err)
+            })
+    })
 
     return out
 }

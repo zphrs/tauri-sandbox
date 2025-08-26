@@ -2,8 +2,14 @@ The following test files are found in src/indexeddb/w3c-tests:
 
 -   [x] abort-in-initial-upgradeneeded.any.js
 
-<!-- [ ] bindings-inject-keys-bypass.any.js
-[ ] bindings-inject-values-bypass.any.js:~~ not worth implementing, based on using setters incorrectly; messes with test suite -->
+-   [ ] idbobjectstore-index-finished.any.js
+-   [ ] idbobjectstore-query-exception-order.any.js
+-   [/] idbobjectstore-rename-abort.any.js
+-   [/] idbobjectstore-rename-errors.any.js
+-   [x] idbobjectstore-rename-store.any.js
+-   [x] idbobjectstore-request-source.any.js
+-   [x] idbobjectstore-transaction-SameObject.any.js] bindings-inject-keys-bypass.any.js
+        [ ] bindings-inject-values-bypass.any.js:~~ not worth implementing, based on using setters incorrectly; messes with test suite -->
 
 -   [x] blob-composite-blob-reads.any.js
 -   [x] blob-contenttype.any.js
@@ -89,48 +95,44 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbindex-request-source.any.js
 -   [x] idbindex_count.any.js
 -   [x] idbindex_get.any.js
--   [/] idbindex_getAll-options.tentative.any.js
--   [ ] idbindex_getAll.any.js
--   [ ] idbindex_getAllKeys-options.tentative.any.js
--   [ ] idbindex_getAllKeys.any.js
--   [ ] idbindex_getAllRecords.tentative.any.js
--   [ ] idbindex_getKey.any.js
--   [ ] idbindex_indexNames.any.js
--   [ ] idbindex_keyPath.any.js
--   [ ] idbindex_openCursor.any.js
--   [ ] idbindex_openKeyCursor.any.js
--   [ ] idbindex_reverse_cursor.any.js
--   [ ] idbindex_tombstones.any.js
--   [ ] idbkeyrange-includes.any.js
--   [ ] idbkeyrange.any.js
--   [ ] idbkeyrange_incorrect.any.js
--   [ ] idbobjectstore-add-put-exception-order.any.js
--   [ ] idbobjectstore-clear-exception-order.any.js
--   [ ] idbobjectstore-delete-exception-order.any.js
--   [ ] idbobjectstore-deleteIndex-exception-order.any.js
--   [ ] idbobjectstore-getAll-enforcerange.any.js
--   [ ] idbobjectstore-getAllKeys-enforcerange.any.js
--   [ ] idbobjectstore-index-finished.any.js
--   [ ] idbobjectstore-query-exception-order.any.js
--   [ ] idbobjectstore-rename-abort.any.js
--   [ ] idbobjectstore-rename-errors.any.js
--   [ ] idbobjectstore-rename-store.any.js
--   [ ] idbobjectstore-request-source.any.js
--   [ ] idbobjectstore-transaction-SameObject.any.js
--   [ ] idbobjectstore_add.any.js
--   [ ] idbobjectstore_clear.any.js
--   [ ] idbobjectstore_count.any.js
--   [ ] idbobjectstore_createIndex.any.js
--   [ ] idbobjectstore_delete.any.js
--   [ ] idbobjectstore_deleteIndex.any.js
--   [ ] idbobjectstore_get.any.js
--   [ ] idbobjectstore_getAll-options.tentative.any.js
--   [ ] idbobjectstore_getAll.any.js
--   [ ] idbobjectstore_getAllKeys-options.tentative.any.js
--   [ ] idbobjectstore_getAllKeys.any.js
--   [ ] idbobjectstore_getAllRecords.tentative.any.js
--   [ ] idbobjectstore_getKey.any.js
--   [ ] idbobjectstore_index.any.js
+-   [x] idbindex_getAll-options.tentative.any.js
+-   [x] idbindex_getAll.any.js
+-   [x] idbindex_getAllKeys-options.tentative.any.js
+-   [x] idbindex_getAllKeys.any.js
+-   [x] idbindex_getKey.any.js
+-   [x] idbindex_indexNames.any.js
+-   [x] idbindex_keyPath.any.js
+-   [x] idbindex_openCursor.any.js
+-   [x] idbindex_openKeyCursor.any.js
+-   [x] idbindex_reverse_cursor.any.js
+-   [x] idbindex_tombstones.any.js
+-   [x] idbkeyrange-includes.any.js
+-   [x] idbkeyrange.any.js
+-   [x] idbkeyrange_incorrect.any.js
+-   [x] idbobjectstore-add-put-exception-order.any.js
+-   [x] idbobjectstore-clear-exception-order.any.js
+-   [x] idbobjectstore-delete-exception-order.any.js
+-   [x] idbobjectstore-deleteIndex-exception-order.any.js
+-   [x] idbobjectstore-getAll-enforcerange.any.js
+-   [x] idbobjectstore-getAllKeys-enforcerange.any.js
+-   [x] idbobjectstore-index-finished.any.js
+-   [x] idbobjectstore-query-exception-order.any.js
+-   [x] idbobjectstore-rename-abort.any.js
+-   [x] idbobjectstore-rename-errors.any.js
+-   [x] idbobjectstore-rename-store.any.js
+-   [x] idbobjectstore-request-source.any.js
+-   [x] idbobjectstore-transaction-SameObject.any.js
+-   [x] idbobjectstore_add.any.js
+-   [x] idbobjectstore_clear.any.js
+-   [x] idbobjectstore_count.any.js
+-   [x] idbobjectstore_createIndex.any.js
+-   [x] idbobjectstore_delete.any.js
+-   [x] idbobjectstore_deleteIndex.any.js
+-   [x] idbobjectstore_get.any.js
+-   [x] idbobjectstore_getAll.any.js
+-   [x] idbobjectstore_getAllKeys.any.js
+-   [x] idbobjectstore_getKey.any.js
+-   [x] idbobjectstore_index.any.js
 -   [ ] idbobjectstore_keyPath.any.js
 -   [ ] idbobjectstore_openCursor.any.js
 -   [ ] idbobjectstore_openCursor_invalid.any.js

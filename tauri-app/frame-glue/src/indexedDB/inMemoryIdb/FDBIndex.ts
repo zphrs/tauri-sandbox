@@ -41,7 +41,7 @@ class FDBIndex {
 
         this._name = rawIndex.name
         this.objectStore = objectStore
-        this.keyPath = rawIndex.keyPath
+        this.keyPath = structuredClone(rawIndex.keyPath)
         this.multiEntry = rawIndex.multiEntry
         this.unique = rawIndex.unique
     }

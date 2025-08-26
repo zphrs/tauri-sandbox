@@ -51,7 +51,8 @@ class ObjectStore {
             k = key
         }
 
-        return (await this._getAllRecords(k, 1, true)).map((r) => r.key)
+        const out = (await this._getAllRecords(k, 1, true)).map((r) => r.key)
+        return out[0]
     }
 
     // http://w3c.github.io/IndexedDB/#retrieve-multiple-keys-from-an-object-store

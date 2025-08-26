@@ -102,7 +102,7 @@ export function handleExecuteIDBTransactionMethod(
                         opReq.onerror = (e) => {
                             console.warn("error while executing write op: ", e)
                             e.preventDefault()
-                            tx.commit()
+                            // tx.commit()
                         }
                     })
                 }

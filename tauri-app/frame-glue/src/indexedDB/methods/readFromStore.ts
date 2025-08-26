@@ -397,7 +397,6 @@ function methodToRequest(
         }
         case "indexCount": {
             const { query, indexName } = call.params
-            console.log(query)
             return objStore
                 .index(indexName)
                 .count(query ? deserializeQuery(query) : undefined)

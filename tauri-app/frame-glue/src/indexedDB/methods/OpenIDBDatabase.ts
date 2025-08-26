@@ -169,7 +169,12 @@ function handleObjectStoreActions(
                 break
             }
             default: {
-                performWriteOperation(ua, store)
+                performWriteOperation(ua, store).then((opReq) => {
+                    opReq.onerror = (e) => {
+                        console.warn("error while executing write op: ", e)
+                        e.preventDefault()
+                    }
+                })
                 break
             }
         }

@@ -73,7 +73,7 @@ class Index {
             }
         }
 
-        return records
+        return out
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#index-referenced-value-retrieval-operation

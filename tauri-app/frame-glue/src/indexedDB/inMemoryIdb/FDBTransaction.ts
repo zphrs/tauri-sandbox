@@ -79,6 +79,7 @@ class FDBTransaction extends FakeEventTarget {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-aborting-a-transaction
     public _abort(errName: string | null) {
+        console.warn("ABORTING")
         for (const f of this._rollbackLog.reverse()) {
             f()
         }
@@ -134,7 +135,7 @@ class FDBTransaction extends FakeEventTarget {
     }
 
     // http://w3c.github.io/IndexedDB/#dom-idbtransaction-objectstore
-    public objectStore(name: string) {
+    public objectStore(name: string, _justCreated: boolean = false) {
         if (this._state !== "active") {
             throw new TransactionInactiveError()
         }
@@ -180,6 +181,7 @@ class FDBTransaction extends FakeEventTarget {
             this,
             rawObjectStore,
             writeActionArr,
+            _justCreated,
         )
         this._objectStoresCache.set(name, objectStore2)
 
@@ -297,6 +299,7 @@ class FDBTransaction extends FakeEventTarget {
                 // Default action of event
                 if (!event.canceled) {
                     if (defaultAction) {
+                        console.log("EXECING DEFAULT ACTION")
                         defaultAction()
                     }
                 }
@@ -313,6 +316,13 @@ class FDBTransaction extends FakeEventTarget {
             this._state = "finished"
         }
         if (this._state !== "finished") {
+            // clear all modifications for the next transaction
+            for (const objectStore of this._objectStoresCache.values()) {
+                objectStore._rawObjectStore.records.cleanupAfterCompletedTransaction()
+                for (const index of objectStore._rawObjectStore.rawIndexes.values()) {
+                    index.records.cleanupAfterCompletedTransaction()
+                }
+            }
             // Either aborted or committed already
             this._state = "finished"
             if (!this.error) {
@@ -329,13 +339,6 @@ class FDBTransaction extends FakeEventTarget {
                         "executeIDBTransactionMethod",
                         this._writeActions,
                     )
-                }
-            }
-            // clear all modifications for the next transaction
-            for (const objectStore of this._objectStoresCache.values()) {
-                objectStore._rawObjectStore.records.cleanupAfterCompletedTransaction()
-                for (const index of objectStore._indexesCache.values()) {
-                    index._rawIndex.records.cleanupAfterCompletedTransaction()
                 }
             }
             if (!this.error) {

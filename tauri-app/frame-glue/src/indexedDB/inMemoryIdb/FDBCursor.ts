@@ -388,6 +388,7 @@ class FDBCursor {
             (sourceIsObjectStore
                 ? { key: fetchedNext.key, value: fetchedNext.value }
                 : { key: fetchedNext.key, value: fetchedNext.primaryKey })
+
         if (foundRecord && fetchedNext) {
             const cmpResult = cmp(
                 sourceIsObjectStore
