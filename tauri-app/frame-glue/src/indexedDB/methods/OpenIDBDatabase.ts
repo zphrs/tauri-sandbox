@@ -15,7 +15,9 @@ export type ObjectStoreUpgradeActions =
               options?: IDBIndexParameters
           }
       >
+    | Notification<"renameObjectStore", { newName: string }>
     | Notification<"deleteIndex", { name: string }>
+    | Notification<"modifyIndex", { name: string; newName: string }>
 
 export type UpgradeActions =
     | Notification<
@@ -27,6 +29,13 @@ export type UpgradeActions =
           }
       >
     | Notification<"deleteObjectStore", { name: string }>
+    | Notification<
+          "modifyObjectStore",
+          {
+              name: string
+              doOnUpgrade: (ObjectStoreUpgradeActions | Write)[]
+          }
+      >
 
 export type OpenIDBDatabaseMethod = Method<
     "openDatabase",
@@ -44,7 +53,7 @@ export type OpenIDBDatabaseMethod = Method<
     }
 >
 
-export const openedDbs: Record<string, IDBDatabase> = {}
+export const openedDbs: Record<string, { db: IDBDatabase; count: number }> = {}
 
 export function handleOpenDatabase(port: MessagePort, docId: string) {
     handleRequests<OpenIDBDatabaseMethod>(
@@ -71,13 +80,28 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                             db.deleteObjectStore(name)
                             break
                         }
+                        case "modifyObjectStore": {
+                            const { name, doOnUpgrade } = upgradeAction.params
+                            const store = req.transaction!.objectStore(name)
+                            handleObjectStoreActions(doOnUpgrade, store)
+                        }
                     }
                 }
             }
-            return new Promise((res) => {
+            return new Promise((res, rej) => {
                 req.onsuccess = () => {
                     const db = req.result
-                    openedDbs[`${docId}:${name}`] = db
+                    let openedDb = openedDbs[`${docId}:${name}`]
+                    if (openedDb) {
+                        openedDb.db.close()
+                    }
+                    if (!openedDb) {
+                        openedDbs[`${docId}:${name}`] = openedDb = {
+                            db,
+                            count: 0,
+                        }
+                    }
+                    openedDb.count++
                     const names = db.objectStoreNames
                     if (names.length === 0) {
                         res({ objectStores: [] })
@@ -108,8 +132,10 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
                             }),
                         })
                     }
-
                     res({ objectStores: out })
+                }
+                req.onerror = () => {
+                    rej(req.error)
                 }
             })
         },
@@ -122,6 +148,11 @@ function handleObjectStoreActions(
 ) {
     for (const ua of doOnUpgrade) {
         switch (ua.method) {
+            case "renameObjectStore": {
+                const { newName } = ua.params
+                store.name = newName
+                break
+            }
             case "createIndex": {
                 const { name, keyPath, options } = ua.params
                 store.createIndex(name, keyPath, options)
@@ -130,6 +161,11 @@ function handleObjectStoreActions(
             case "deleteIndex": {
                 const { name } = ua.params
                 store.deleteIndex(name)
+                break
+            }
+            case "modifyIndex": {
+                const { name, newName } = ua.params
+                store.index(name).name = newName
                 break
             }
             default: {

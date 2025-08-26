@@ -28,19 +28,27 @@ export async function createDatabase(
     const out = await requestToPromise(
         req as unknown as IDBRequest<IDBDatabase>,
     )
-    try {
-        onTestFinished(() => {
-            out.close()
-            idb.deleteDatabase(dbname)
-        })
-    } catch {
-        afterAll(() => {
-            out.close()
-            idb.deleteDatabase(dbname)
-        })
-    }
+    cleanupDbRefAfterTest(out)
 
     return out
+}
+
+export async function cleanupDbRefAfterTest(db: IDBDatabase) {
+    try {
+        onTestFinished(async () => {
+            db.close()
+            await requestToPromise(
+                idb.deleteDatabase(db.name) as unknown as IDBRequest<unknown>,
+            )
+        })
+    } catch {
+        afterAll(async () => {
+            db.close()
+            await requestToPromise(
+                idb.deleteDatabase(db.name) as unknown as IDBRequest<unknown>,
+            )
+        })
+    }
 }
 
 // Helper function to create a named database (equivalent to createNamedDatabase in original)
@@ -59,17 +67,7 @@ export async function createNamedDatabase(
     const out = await requestToPromise(
         req as unknown as IDBRequest<IDBDatabase>,
     )
-    try {
-        onTestFinished(() => {
-            out.close()
-            idb.deleteDatabase(dbname)
-        })
-    } catch {
-        afterAll(() => {
-            out.close()
-            idb.deleteDatabase(dbname)
-        })
-    }
+    cleanupDbRefAfterTest(out)
 
     return out
 }
@@ -79,20 +77,25 @@ export async function migrateNamedDatabase(
     _t: { id?: string },
     dbname: string,
     newVersion: number,
-    onUpgradeNeeded: (db: IDBDatabase) => void,
+    onUpgradeNeeded: (db: IDBDatabase, tx: IDBTransaction) => void,
 ): Promise<IDBDatabase> {
     const req = idb.open(dbname, newVersion)
     req.onupgradeneeded = () => {
-        onUpgradeNeeded(req.result)
+        onUpgradeNeeded(
+            req.result,
+            req.transaction! as unknown as IDBTransaction,
+        )
     }
     const out = await requestToPromise(
         req as unknown as IDBRequest<IDBDatabase>,
     )
 
+    cleanupDbRefAfterTest(out)
     return out
 }
 
-// Helper function to delete all databases
+// Helper function to delete all databases - if called make
+// sure that the test which calls it is in the serial directory.
 export async function deleteAllDatabases(): Promise<void> {
     const databases = await idb.databases()
     for (const dbInfo of databases) {

@@ -126,6 +126,11 @@ class FDBObjectStore {
     set name(name: string) {
         const transaction = this.transaction
 
+        this._updateWriteLog.push({
+            method: "renameObjectStore",
+            params: { newName: name },
+        })
+
         if (!transaction.db._runningVersionchangeTransaction) {
             throw new InvalidStateError()
         }

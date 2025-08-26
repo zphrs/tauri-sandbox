@@ -44,6 +44,14 @@ export type Count = Notification<
     }
 >
 
+export type IndexCount = Notification<
+    "indexCount",
+    {
+        query?: SerializedQuery
+        indexName: string
+    }
+>
+
 export type GetAllRecords = Notification<
     "getAllRecords",
     {
@@ -92,6 +100,7 @@ export type GetNextFromCursor = Notification<
         range: SerializedQuery | undefined
         direction: IDBCursorDirection
         indexName?: string
+        currPrimaryKey?: IDBValidKey | undefined
         prevPrimaryKey?: IDBValidKey | undefined
     }
 >
@@ -102,6 +111,7 @@ export type Read =
     | GetKey
     | GetAllKeys
     | Count
+    | IndexCount
     | GetAllRecords
     | GetWithKey
     | GetAllKeysFromIndex
@@ -140,7 +150,7 @@ export type GetWithKeyMethod = ExecuteReadMethod<
 >
 export type GetNextFromCursorMethod = ExecuteReadMethod<
     GetNextFromCursor,
-    { key: IDBValidKey; value: unknown; primaryKey: unknown } | undefined
+    { key: IDBValidKey; value: unknown; primaryKey: IDBValidKey } | undefined
 >
 
 export type ExecuteReadMethod<R extends Read, Return> = Method<
@@ -171,43 +181,136 @@ export function handleReadMethod(port: MessagePort, docId: string) {
         async (req) => {
             const { call, dbName, store } = req
 
-            let db: IDBDatabase | undefined = openedDbs[`${docId}:${dbName}`]
-            if (db === undefined) {
-                const dbs = await indexedDB.databases()
-                if (dbs.some((v) => v.name === `${docId}:${dbName}`)) {
-                    db = openedDbs[`${docId}:${dbName}`] = await new Promise(
-                        (res) => {
-                            const request = indexedDB.open(`${docId}:${dbName}`)
-                            request.onsuccess = () => res(request.result)
-                        },
-                    )
-                } else {
-                    // db is not created; return nothing for all requests
-                    // simulate version 0 of a db
-                    switch (call.method) {
-                        case "get":
-                            return undefined
-                        case "getAll":
-                            return []
-                        case "getKey":
-                            return undefined
-                        case "getAllKeys":
-                            return []
-                        case "count":
-                            return 0
-                        case "getAllRecords":
-                            return [[], []]
-                        case "getWithKey":
-                            return [undefined, undefined]
-                        case "getNextFromCursor":
-                            return undefined
-                    }
+            let dbRecord: IDBDatabase | undefined = undefined
+            let dbs: IDBDatabaseInfo[] | undefined = undefined
+            let openedNewConn = false
+            if (openedDbs[`${docId}:${dbName}`]) {
+                dbRecord = openedDbs[`${docId}:${dbName}`].db
+            } else {
+                dbs = await indexedDB.databases()
+            }
+            if (
+                dbs !== undefined &&
+                dbs.some((v) => v.name === `${docId}:${dbName}`)
+            ) {
+                dbRecord = await new Promise((res) => {
+                    const request = indexedDB.open(`${docId}:${dbName}`)
+                    request.onsuccess = () => res(request.result)
+                })
+                openedNewConn = true
+            }
+            let tx: IDBTransaction | undefined = undefined
+            try {
+                if (dbRecord !== undefined)
+                    tx = dbRecord.transaction(store, "readonly")
+            } catch (e) {
+                dbRecord = undefined
+                console.error("Unexpected error", e, req)
+                /* empty */
+            }
+            if (dbRecord === undefined || tx === undefined) {
+                // db is not created; return nothing for all requests
+                // simulate version 0 of a db
+                switch (call.method) {
+                    case "get":
+                        return undefined
+                    case "getAll":
+                        return []
+                    case "getKey":
+                        return undefined
+                    case "getAllKeys":
+                        return []
+                    case "count":
+                        return 0
+                    case "indexCount":
+                        return 0
+                    case "getAllRecords":
+                        return [[], []]
+                    case "getWithKey":
+                        return [undefined, undefined]
+                    case "getAllFromIndex":
+                        return []
+                    case "getAllKeysFromIndex":
+                        return []
+                    case "getAllRecordsFromIndex":
+                        return [[], []]
+                    case "getNextFromCursor":
+                        return undefined
                 }
             }
-            const tx = db.transaction(store, "readonly")
+            tx.onabort = () => {
+                if (openedNewConn) {
+                    dbRecord.close()
+                }
+            }
+            tx.onerror = () => {
+                if (openedNewConn) {
+                    dbRecord.close()
+                }
+            }
+            tx.oncomplete = () => {
+                if (openedNewConn) {
+                    dbRecord.close()
+                }
+            }
 
             const objStore = tx.objectStore(store)
-            if (call.method === "getAllRecords") {
+            if (call.method === "getNextFromCursor") {
+                const {
+                    range: serializedRange,
+                    direction,
+                    indexName,
+                    currPrimaryKey,
+                    prevPrimaryKey,
+                } = call.params
+                const range = (
+                    serializedRange
+                        ? deserializeQuery(serializedRange)
+                        : undefined
+                ) as IDBKeyRange
+
+                const cursorRequest = indexName
+                    ? objStore.index(indexName).openCursor(range, direction)
+                    : objStore.openCursor(range, direction)
+
+                let cursor = await requestToPromise(cursorRequest)
+                if (cursor === null) {
+                    return undefined
+                }
+                if (
+                    currPrimaryKey !== undefined &&
+                    cmp(cursor.primaryKey, currPrimaryKey) >= 0
+                ) {
+                    /* empty */
+                } else if (currPrimaryKey !== undefined) {
+                    cursor.continuePrimaryKey(
+                        direction.includes("next") ? range.lower : range.upper,
+                        currPrimaryKey,
+                    )
+                    cursor = await requestToPromise(cursorRequest)
+                } else if (cursor.primaryKey === prevPrimaryKey) {
+                    cursor.advance(1)
+                    cursor = await requestToPromise(cursorRequest)
+                } else if (prevPrimaryKey !== undefined) {
+                    cursor.continuePrimaryKey(
+                        direction.includes("next") ? range.lower : range.upper,
+                        prevPrimaryKey,
+                    )
+                    cursor = await requestToPromise(cursorRequest)
+                    cursor?.advance(1)
+                    cursor = await requestToPromise(cursorRequest)
+                }
+
+                if (cursor === null) {
+                    return undefined
+                }
+
+                return {
+                    key: cursor.key,
+                    value: cursor.value,
+                    primaryKey: cursor.primaryKey,
+                }
+            } else if (call.method === "getAllRecords") {
                 const req1 = methodToRequest(
                     {
                         method: "getAll",
@@ -219,7 +322,10 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                     { method: "getAllKeys", params: call.params },
                     objStore,
                 )
-                return Promise.all([req1, req2].map(requestToPromise))
+                const out = await Promise.all(
+                    [req1, req2].map(requestToPromise),
+                )
+                return out
             } else if (call.method === "getWithKey") {
                 const req1 = methodToRequest(
                     {
@@ -246,34 +352,6 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                     objStore,
                 )
                 return Promise.all([req1, req2].map(requestToPromise))
-            } else if (call.method === "getNextFromCursor") {
-                const cursorRequest = methodToRequest(call, objStore)
-                const cursorOrNull: IDBCursorWithValue | null =
-                    await requestToPromise(cursorRequest)
-                if (cursorOrNull === null) {
-                    return undefined
-                }
-                let cursor = cursorOrNull
-                if (call.params.prevPrimaryKey !== undefined) {
-                    while (
-                        cmp(cursor.primaryKey, call.params.prevPrimaryKey) !== 0
-                    ) {
-                        cursor.continue()
-
-                        cursor = await requestToPromise(cursorRequest)
-                        if (cursor === null) return undefined
-                    }
-                    // one more to pass the previous primary key:
-                    cursor.continue()
-                    cursor = await requestToPromise(cursorRequest)
-                    if (cursor === null) return undefined
-                }
-
-                return {
-                    key: cursor.key,
-                    value: cursor.value,
-                    primaryKey: cursor.primaryKey,
-                }
             } else {
                 const request = methodToRequest(call, objStore)
                 return requestToPromise(request)
@@ -282,7 +360,10 @@ export function handleReadMethod(port: MessagePort, docId: string) {
     )
 }
 function methodToRequest(
-    call: Exclude<Read, GetAllRecords | GetWithKey | GetAllRecordsFromIndex>,
+    call: Exclude<
+        Read,
+        GetAllRecords | GetWithKey | GetAllRecordsFromIndex | GetNextFromCursor
+    >,
     objStore: IDBObjectStore,
 ) {
     switch (call.method) {
@@ -314,6 +395,13 @@ function methodToRequest(
                 query === undefined ? undefined : deserializeQuery(query),
             )
         }
+        case "indexCount": {
+            const { query, indexName } = call.params
+            console.log(query)
+            return objStore
+                .index(indexName)
+                .count(query ? deserializeQuery(query) : undefined)
+        }
         case "getAllKeysFromIndex": {
             const { indexName, query, count } = call.params
             const index = objStore.index(indexName)
@@ -326,18 +414,6 @@ function methodToRequest(
             const { indexName, query, count } = call.params
             const index = objStore.index(indexName)
             return index.getAll(query ? deserializeQuery(query) : null, count)
-        }
-        case "getNextFromCursor": {
-            const { range: serializedRange, direction, indexName } = call.params
-            const range = (
-                serializedRange ? deserializeQuery(serializedRange) : undefined
-            ) as IDBKeyRange
-
-            const cursor = indexName
-                ? objStore.index(indexName).openCursor(range, direction)
-                : objStore.openCursor(range, direction)
-
-            return cursor
         }
     }
 }

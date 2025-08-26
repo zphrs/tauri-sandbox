@@ -12,10 +12,10 @@ export function handleCloseDatabase(port: MessagePort, docId: string) {
         port,
         "closeDatabase",
         async ({ name }) => {
-            const db = openedDbs[`${docId}:${name}`]
-            delete openedDbs[`${docId}:${name}`]
-            if (db) {
-                db.close()
+            const dbRecord = openedDbs[`${docId}:${name}`]
+            if (dbRecord && --dbRecord.count === 0) {
+                dbRecord.db.close()
+                delete openedDbs[`${docId}:${name}`]
             }
             return null
         },

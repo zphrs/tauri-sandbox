@@ -4,10 +4,7 @@ import type {
     Write,
     WriteLog,
 } from "../methods/executeIDBTransaction"
-import type {
-    ObjectStoreUpgradeActions,
-    UpgradeActions,
-} from "../methods/OpenIDBDatabase"
+import type { UpgradeActions } from "../methods/OpenIDBDatabase"
 import type FDBCursor from "./FDBCursor"
 import FDBDatabase from "./FDBDatabase"
 import { callOpenDatabase } from "./FDBFactory"
@@ -33,7 +30,12 @@ import type {
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#transaction
 class FDBTransaction extends FakeEventTarget {
-    public _state: "active" | "inactive" | "committing" | "finished" = "active"
+    public _state:
+        | "active"
+        | "inactive"
+        | "committing"
+        | "finished"
+        | "aborting" = "active"
     public _started = false
     public _rollbackLog: RollbackLog = []
     public _writeActions: WriteLog | undefined
@@ -109,12 +111,14 @@ class FDBTransaction extends FakeEventTarget {
         this._writeActions = undefined
 
         queueTask(() => {
+            this._state = "aborting"
             const event = new FakeEvent("abort", {
                 bubbles: true,
                 cancelable: false,
             })
             event.eventPath = [this.db]
             this.dispatchEvent(event)
+            this._state = "finished"
         })
 
         this._state = "finished"
@@ -145,20 +149,32 @@ class FDBTransaction extends FakeEventTarget {
             throw new NotFoundError()
         }
 
-        const writeActionArr =
-            this.mode === "versionchange"
-                ? (
-                      this._upgradeActions.find(
-                          (v) =>
-                              v.method === "createObjectStore" &&
-                              v.params.name === name,
-                      )!.params as {
-                          name: string
-                          options: IDBObjectStoreParameters
-                          doOnUpgrade: (ObjectStoreUpgradeActions | Write)[]
-                      }
-                  ).doOnUpgrade
-                : this._writeActions!.ops[name]
+        let writeActionArr: Write[] | undefined = undefined
+
+        if (this.mode === "versionchange") {
+            const found = this._upgradeActions.find(
+                (v) =>
+                    (v.method === "createObjectStore" ||
+                        v.method === "modifyObjectStore") &&
+                    v.params.name === name,
+            )
+            if (found) {
+                writeActionArr = (found.params as { doOnUpgrade: Write[] })
+                    .doOnUpgrade
+            } else {
+                writeActionArr = []
+                this._upgradeActions.push({
+                    method: "modifyObjectStore",
+                    params: {
+                        name,
+                        doOnUpgrade: writeActionArr,
+                    },
+                })
+            }
+        }
+        if (writeActionArr === undefined) {
+            writeActionArr = this._writeActions!.ops[name]
+        }
 
         const objectStore2 = new FDBObjectStore(
             this,
@@ -260,13 +276,15 @@ class FDBTransaction extends FakeEventTarget {
 
                     defaultAction = this._abort.bind(this, err.name)
                 }
-
+                const timeoutForInactive = new Promise((res) =>
+                    setTimeout(res, 0),
+                )
                 try {
                     event.eventPath = [this.db, this]
                     request.dispatchEvent(event)
-                    await new Promise((res) => setTimeout(res, 0))
+                    await timeoutForInactive
                 } catch (err) {
-                    await new Promise((res) => setTimeout(res, 0))
+                    await timeoutForInactive
                     if (this._state !== "committing") {
                         this._abort("AbortError")
                     } else {
@@ -291,6 +309,9 @@ class FDBTransaction extends FakeEventTarget {
         }
 
         // Check if transaction complete event needs to be fired
+        if (this._state === "aborting") {
+            this._state = "finished"
+        }
         if (this._state !== "finished") {
             // Either aborted or committed already
             this._state = "finished"

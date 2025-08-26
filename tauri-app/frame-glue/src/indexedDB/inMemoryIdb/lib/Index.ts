@@ -43,10 +43,15 @@ class Index {
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-retrieving-a-value-from-an-index
-    public getKey(key: FDBKeyRange | Key) {
-        const record = this.records.get(key)
-
-        return record !== undefined ? record.value : undefined
+    public async getKey(key: FDBKeyRange | Key) {
+        const out = await this._getAllRecords(
+            key instanceof FDBKeyRange ? key : FDBKeyRange.only(key),
+            1,
+        )
+        if (out.length === 0) {
+            return undefined
+        }
+        return out[0].value
     }
 
     // http://w3c.github.io/IndexedDB/#retrieve-multiple-referenced-values-from-an-index
@@ -88,7 +93,7 @@ class Index {
         return foundValue
     }
 
-    private async executeReadMethod<
+    public async _executeReadMethod<
         Method extends ExecuteReadMethod<Read, unknown>,
     >(
         method: Method["req"]["params"]["call"]["method"],
@@ -117,7 +122,7 @@ class Index {
             count = Infinity
         }
 
-        const kvPromise = this.executeReadMethod<GetAllRecordsFromIndexMethod>(
+        const kvPromise = this._executeReadMethod<GetAllRecordsFromIndexMethod>(
             "getAllRecordsFromIndex",
             {
                 indexName: this.name,

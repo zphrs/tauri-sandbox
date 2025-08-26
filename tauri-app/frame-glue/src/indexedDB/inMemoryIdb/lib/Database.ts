@@ -2,6 +2,7 @@ import { call } from "../../../rpcOverPorts"
 import type { GetIDBDatabaseStoresMethod } from "../../methods/GetIDBDatabaseStores"
 import FDBDatabase from "../FDBDatabase"
 import FDBTransaction from "../FDBTransaction"
+import Index from "./Index"
 import ObjectStore from "./ObjectStore"
 import { queueTask } from "./scheduling"
 
@@ -34,13 +35,25 @@ class Database {
                     name: this.name,
                 },
             )
-        ).map(({ name, parameters }) => {
+        ).map(({ name, parameters, indexes }) => {
             const os = new ObjectStore(
                 this,
                 name,
                 parameters.keyPath ?? null,
                 !!parameters.autoIncrement,
             )
+
+            for (const index of indexes) {
+                const newIndex = new Index(
+                    os,
+                    index.name,
+                    index.keyPath,
+                    index.multiEntry,
+                    index.unique,
+                )
+                os.rawIndexes.set(index.name, newIndex)
+            }
+
             return os
         })) {
             this.rawObjectStores.set(objectStore.name, objectStore)

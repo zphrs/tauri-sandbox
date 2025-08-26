@@ -11,6 +11,7 @@ import { serializeQuery } from "../methods/SerializedRange"
 
 import { cmp } from "./lib/cmp"
 import {
+    DataCloneError,
     DataError,
     InvalidAccessError,
     InvalidStateError,
@@ -196,43 +197,88 @@ class FDBCursor {
             (isUnique || sourceIsObjectStore) &&
             range &&
             isNext &&
+            key === undefined &&
+            primaryKey === undefined &&
             this._range?.lower !== range?.lower
         ) {
             range.lowerOpen = true
         }
-
         if (
             (isUnique || sourceIsObjectStore) &&
             range &&
             !isNext &&
+            key === undefined &&
+            primaryKey === undefined &&
             this._range?.upper !== range?.upper
         ) {
             range.upperOpen = true
         }
-        const fetchedNextPromise = call<GetNextFromCursorMethod>(
-            port,
-            "executeReadMethod",
-            {
-                dbName: objectStore.rawDatabase.name,
-                store: storeName,
-                call: {
-                    method: "getNextFromCursor",
-                    params: {
-                        range: serializeQuery(range),
-                        direction: this.direction,
-                        prevPrimaryKey:
-                            range &&
-                            this._previousFetchedKey &&
-                            range.includes(this._previousFetchedKey)
-                                ? this._previousFetchedPrimaryKey
+
+        let fetchedNextPromise:
+            | {
+                  key: IDBValidKey
+                  value: unknown
+                  primaryKey: IDBValidKey
+              }
+            | undefined
+            | null = null
+        let tmpRange = range
+        while (
+            fetchedNextPromise !== undefined &&
+            (fetchedNextPromise === null ||
+                getEffectiveObjectStore(this)._rawObjectStore.records.modified(
+                    fetchedNextPromise.key,
+                ))
+        ) {
+            if (fetchedNextPromise !== null && sourceIsObjectStore) {
+                try {
+                    tmpRange = makeKeyRange(
+                        this._range,
+                        isNext ? [key, fetchedNextPromise!.primaryKey] : [],
+                        isNext ? [] : [key, fetchedNextPromise!.primaryKey],
+                    )
+                    if (tmpRange && isNext) {
+                        tmpRange.lowerOpen = true
+                    } else if (tmpRange && !isNext) {
+                        tmpRange.upperOpen = true
+                    }
+                } catch {
+                    return null
+                }
+            }
+            // if (count++ >= 2000) {
+            //     console.log("stuck in loop")
+            //     throw new Error("Stuck in loop!")
+            // }
+            fetchedNextPromise = await call<GetNextFromCursorMethod>(
+                port,
+                "executeReadMethod",
+                {
+                    dbName: objectStore.rawDatabase.name,
+                    store: storeName,
+                    call: {
+                        method: "getNextFromCursor",
+                        params: {
+                            range: serializeQuery(tmpRange),
+                            direction: this.direction,
+                            currPrimaryKey: primaryKey,
+                            prevPrimaryKey: !sourceIsObjectStore
+                                ? fetchedNextPromise
+                                    ? fetchedNextPromise.primaryKey
+                                    : range &&
+                                      this._previousFetchedKey &&
+                                      range.includes(this._previousFetchedKey)
+                                    ? this._previousFetchedPrimaryKey
+                                    : undefined
                                 : undefined,
-                        indexName: sourceIsObjectStore
-                            ? undefined
-                            : this.source.name,
+                            indexName: sourceIsObjectStore
+                                ? undefined
+                                : this.source.name,
+                        },
                     },
                 },
-            },
-        )
+            )
+        }
 
         const iterationDirection = isNext ? undefined : "prev"
         let tempRecord: Record | undefined
@@ -332,9 +378,9 @@ class FDBCursor {
             foundRecord = tempRecord
         }
 
-        const fetchedNext = await fetchedNextPromise
+        const fetchedNext = fetchedNextPromise
 
-        console.log({ fetchedNext, foundRecord })
+        // console.log({ fetchedNext, foundRecord })
 
         // Compare local foundRecord with remote fetchedNext to determine which to use
         const convertedFetchedNext =
@@ -475,8 +521,12 @@ class FDBCursor {
         if (!this._gotValue || !Object.hasOwn(this, "value")) {
             throw new InvalidStateError()
         }
-
-        const clone = structuredClone(value)
+        let clone
+        try {
+            clone = structuredClone(value)
+        } catch {
+            throw new DataCloneError()
+        }
 
         if (effectiveObjectStore.keyPath !== null) {
             let tempKey
@@ -497,6 +547,17 @@ class FDBCursor {
             value: clone,
         }
 
+        effectiveObjectStore._updateWriteLog.push({
+            method: "put",
+            params: {
+                value: record.value,
+                key:
+                    effectiveObjectStore.keyPath === null
+                        ? record.key
+                        : undefined,
+            },
+        })
+
         return transaction._execRequestAsync({
             operation: effectiveObjectStore._rawObjectStore.storeRecord.bind(
                 effectiveObjectStore._rawObjectStore,
@@ -516,7 +577,6 @@ class FDBCursor {
 
         const effectiveObjectStore = getEffectiveObjectStore(this)
         const transaction = effectiveObjectStore.transaction
-
         if (transaction._state !== "active") {
             throw new TransactionInactiveError()
         }
@@ -704,6 +764,13 @@ class FDBCursor {
         if (!this._gotValue || !Object.hasOwn(this, "value")) {
             throw new InvalidStateError()
         }
+
+        effectiveObjectStore._updateWriteLog.push({
+            method: "delete",
+            params: {
+                query: effectiveKey as Key,
+            },
+        })
 
         return transaction._execRequestAsync({
             operation: effectiveObjectStore._rawObjectStore.deleteRecord.bind(

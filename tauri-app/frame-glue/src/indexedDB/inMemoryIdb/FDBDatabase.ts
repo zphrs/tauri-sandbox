@@ -18,10 +18,6 @@ import type { KeyPath, TransactionMode } from "./lib/types"
 import validateKeyPath from "./lib/validateKeyPath"
 
 const confirmActiveVersionchangeTransaction = (database: FDBDatabase) => {
-    if (!database._runningVersionchangeTransaction) {
-        throw new InvalidStateError()
-    }
-
     // Find the latest versionchange transaction
     const transactions = database._rawDatabase.transactions.filter((tx) => {
         return tx.mode === "versionchange"
@@ -36,11 +32,15 @@ const confirmActiveVersionchangeTransaction = (database: FDBDatabase) => {
         throw new TransactionInactiveError()
     }
 
+    if (!database._runningVersionchangeTransaction) {
+        throw new InvalidStateError()
+    }
+
     return transaction
 }
 
 // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#database-closing-steps
-const closeConnection = (connection: {
+const closeConnection = async (connection: {
     _rawDatabase: Database
     name: string
     _closePending: boolean
@@ -56,15 +56,15 @@ const closeConnection = (connection: {
 
     if (transactionsComplete) {
         connection._closed = true
-        connection._rawDatabase.connections =
-            connection._rawDatabase.connections.filter((otherConnection) => {
-                return connection !== otherConnection
-            })
-        call<CloseDatabaseMethod>(
+        await call<CloseDatabaseMethod>(
             connection._rawDatabase._port,
             "closeDatabase",
             { name: connection.name },
         )
+        connection._rawDatabase.connections =
+            connection._rawDatabase.connections.filter((otherConnection) => {
+                return connection !== otherConnection
+            })
     } else {
         queueTask(() => {
             closeConnection(connection)
@@ -203,16 +203,12 @@ class FDBDatabase extends FakeEventTarget {
         transaction._objectStoresCache.delete(name)
     }
 
-    public transaction(storeNames: string | string[], mode?: TransactionMode) {
+    public transaction(
+        storeNames: string | string[],
+        mode?: TransactionMode,
+        internalRequest = false,
+    ) {
         mode = mode !== undefined ? mode : "readonly"
-        if (
-            mode !== "readonly" &&
-            mode !== "readwrite" &&
-            mode !== "versionchange"
-        ) {
-            throw new TypeError("Invalid mode: " + mode)
-        }
-
         const hasActiveVersionchange = this._rawDatabase.transactions.some(
             (transaction) => {
                 return (
@@ -242,6 +238,10 @@ class FDBDatabase extends FakeEventTarget {
                     "No objectStore named " + storeName + " in this database",
                 )
             }
+        }
+        if (mode !== "readonly" && mode !== "readwrite") {
+            if (!(internalRequest && mode === "versionchange"))
+                throw new TypeError("Invalid mode: " + mode)
         }
 
         const tx = new FDBTransaction(storeNames, mode, this)

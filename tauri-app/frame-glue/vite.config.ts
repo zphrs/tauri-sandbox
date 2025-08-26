@@ -13,17 +13,4 @@ export default defineConfig({
         minify: false,
     },
     plugins: [dts()],
-    test: {
-        globals: true,
-        browser: {
-            provider: "playwright",
-            enabled: true,
-            instances: [{ browser: "chromium" }],
-            // headless: true,
-        },
-        coverage: {
-            provider: "v8",
-            reporter: ["text", "json", "html"],
-        },
-    },
 })

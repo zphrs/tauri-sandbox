@@ -1,3 +1,4 @@
+import { serializeQuery } from "../methods/SerializedRange"
 import FDBCursor from "./FDBCursor"
 import FDBCursorWithValue from "./FDBCursorWithValue"
 import FDBKeyRange from "./FDBKeyRange"
@@ -113,11 +114,18 @@ class FDBIndex {
                 ...oldIndexNames,
             )
         })
+        this.objectStore._updateWriteLog.push({
+            method: "modifyIndex",
+            params: {
+                name: oldName,
+                newName: name,
+            },
+        })
     }
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-openCursor-IDBRequest-any-range-IDBCursorDirection-direction
     public openCursor(
-        range?: FDBKeyRange | IDBValidKey | null  ,
+        range?: FDBKeyRange | IDBValidKey | null,
         direction?: FDBCursorDirection,
     ) {
         confirmActiveTransaction(this)
@@ -144,7 +152,7 @@ class FDBIndex {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#widl-IDBIndex-openKeyCursor-IDBRequest-any-range-IDBCursorDirection-direction
     public openKeyCursor(
-        range?: FDBKeyRange | IDBKeyRange | null  ,
+        range?: FDBKeyRange | IDBKeyRange | null,
         direction?: FDBCursorDirection,
     ) {
         confirmActiveTransaction(this)
@@ -242,12 +250,18 @@ class FDBIndex {
             key = undefined
         }
         if (k !== undefined && !(k instanceof FDBKeyRange)) {
-            key = FDBKeyRange.only(valueToKey(key))
+            key = FDBKeyRange.only(valueToKey(k))
+        }
+        if (k instanceof FDBKeyRange) {
+            key = k
         }
 
         return this.objectStore.transaction._execRequestAsync({
             operation: () => {
-                return this._rawIndex.count(key)
+                return this._rawIndex._executeReadMethod("indexCount", {
+                    query: serializeQuery(key),
+                    indexName: this._name,
+                })
             },
             source: this,
         })

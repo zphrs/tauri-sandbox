@@ -1,6 +1,7 @@
 import { type Method, handleRequests } from "../../rpcOverPorts"
 import type { KeyPath } from "../inMemoryIdb/lib/types"
 import { openedDbs } from "./OpenIDBDatabase"
+import { requestToPromise } from "./readFromStore"
 
 type SerializedIndex = {
     name: string
@@ -33,18 +34,19 @@ export function handleGetIDBDatabaseStores(port: MessagePort, docId: string) {
             ) {
                 return []
             }
-            // check if there's already an open conn
-            const db = openedDbs[`${docId}:${name}`]
-            if (db) {
-                return idbStoresFromDb(db)
-            }
-            const request = indexedDB.open(`${docId}:${name}`)
-            return new Promise((res) => {
-                request.onsuccess = () => {
-                    const db = request.result
-                    res(idbStoresFromDb(db))
+            // code block ({}) to reuse db var
+            {
+                const db = openedDbs[`${docId}:${name}`]
+                if (db) {
+                    return idbStoresFromDb(db.db)
                 }
-            })
+            }
+            const db = await requestToPromise(
+                indexedDB.open(`${docId}:${name}`),
+            )
+            const out = idbStoresFromDb(db)
+            db.close()
+            return out
         },
     )
 }

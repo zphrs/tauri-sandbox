@@ -37,7 +37,7 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbcursor-continue.any.js
 -   [x] idbcursor-continuePrimaryKey-exception-order.any.js
 -   [x] idbcursor-continuePrimaryKey-exceptions.any.js
--   [/] idbcursor-continuePrimaryKey.any.js
+-   [x] idbcursor-continuePrimaryKey.any.js
 -   [x] idbcursor-delete-exception-order.any.js
 -   [x] idbcursor-direction-index-keyrange.any.js
 -   [x] idbcursor-direction-index.any.js
@@ -46,47 +46,48 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbcursor-direction.any.js
 -   [x] idbcursor-iterating-update.any.js
 -   [x] idbcursor-key.any.js
--   [ ] idbcursor-primarykey.any.js
--   [ ] idbcursor-request-source.any.js
--   [ ] idbcursor-request.any.js
--   [ ] idbcursor-reused.any.js
--   [ ] idbcursor-source.any.js
--   [ ] idbcursor-update-exception-order.any.js
--   [ ] idbcursor_advance_index.any.js
--   [ ] idbcursor_advance_objectstore.any.js
--   [ ] idbcursor_continue_delete_objectstore.any.js
--   [ ] idbcursor_continue_index.any.js
--   [ ] idbcursor_continue_invalid.any.js
--   [ ] idbcursor_continue_objectstore.any.js
--   [ ] idbcursor_delete_index.any.js
--   [ ] idbcursor_delete_objectstore.any.js
--   [ ] idbcursor_iterating.any.js
--   [ ] idbcursor_update_index.any.js
--   [ ] idbcursor_update_objectstore.any.js
--   [ ] idbdatabase-createObjectStore-exception-order.any.js
--   [ ] idbdatabase-deleteObjectStore-exception-order.any.js
--   [ ] idbdatabase-transaction-exception-order.any.js
--   [ ] idbdatabase_close.any.js
--   [ ] idbdatabase_createObjectStore.any.js
--   [ ] idbdatabase_deleteObjectStore.any.js
--   [ ] idbdatabase_transaction.any.js
--   [ ] idbfactory-deleteDatabase-request-success.any.js
--   [ ] idbfactory-open-error-properties.any.js
--   [ ] idbfactory-open-request-error.any.js
--   [ ] idbfactory-open-request-success.any.js
--   [ ] idbfactory_cmp.any.js
--   [ ] idbfactory_deleteDatabase.any.js
--   [ ] idbfactory_open.any.js
--   [ ] idbindex-getAll-enforcerange.any.js
--   [ ] idbindex-getAllKeys-enforcerange.any.js
--   [ ] idbindex-multientry.any.js
--   [ ] idbindex-objectStore-SameObject.any.js
--   [ ] idbindex-query-exception-order.any.js
--   [ ] idbindex-rename-abort.any.js
--   [ ] idbindex-rename-errors.any.js
--   [ ] idbindex-rename.any.js
--   [ ] idbindex-request-source.any.js
--   [ ] idbindex_count.any.js
+-   [x] idbcursor-primarykey.any.js
+-   [x] idbcursor-request-source.any.js
+-   [x] idbcursor-request.any.js
+-   [x] idbcursor-reused.any.js
+-   [x] idbcursor-source.any.js
+-   [x] idbcursor-update-exception-order.any.js
+-   [x] idbcursor-update-exception-order.any.js
+-   [x] idbcursor_advance_index.any.js
+-   [x] idbcursor_advance_objectstore.any.js
+-   [x] idbcursor_continue_delete_objectstore.any.js
+-   [x] idbcursor_continue_index.any.js
+-   [x] idbcursor_continue_invalid.any.js
+-   [x] idbcursor_continue_objectstore.any.js
+-   [x] idbcursor_delete_index.any.js
+-   [x] idbcursor_delete_objectstore.any.js
+-   [x] idbcursor_iterating.any.js
+-   [x] idbcursor_update_index.any.js
+-   [x] idbcursor_update_objectstore.any.js
+-   [x] idbdatabase-createObjectStore-exception-order.any.js
+-   [x] idbdatabase-deleteObjectStore-exception-order.any.js
+-   [x] idbdatabase-transaction-exception-order.any.js
+-   [x] idbdatabase_close.any.js
+-   [x] idbdatabase_createObjectStore.any.js
+-   [x] idbdatabase_deleteObjectStore.any.js
+-   [x] idbdatabase_transaction.any.js
+-   [x] idbfactory-deleteDatabase-request-success.any.js
+-   [x] idbfactory-open-error-properties.any.js
+-   [x] idbfactory-open-request-error.any.js
+-   [x] idbfactory-open-request-success.any.js
+-   [x] idbfactory_cmp.any.js
+-   [x] idbfactory_deleteDatabase.any.js
+-   [x] idbfactory_open.any.js
+-   [x] idbindex-getAll-enforcerange.any.js
+-   [x] idbindex-getAllKeys-enforcerange.any.js
+-   [x] idbindex-multientry.any.js
+-   [x] idbindex-objectStore-SameObject.any.js
+-   [x] idbindex-query-exception-order.any.js
+-   [x] idbindex-rename-abort.any.js
+-   [x] idbindex-rename-errors.any.js
+-   [x] idbindex-rename.any.js
+-   [x] idbindex-request-source.any.js
+-   [x] idbindex_count.any.js
 -   [ ] idbindex_get.any.js
 -   [ ] idbindex_getAll-options.tentative.any.js
 -   [ ] idbindex_getAll.any.js

@@ -1,3 +1,5 @@
+import { FDBKeyRange } from "../inMemoryIdb"
+
 export type SerializedQuery =
     | IDBValidKey
     | {
@@ -33,7 +35,8 @@ export function serializeQuery<T extends IDBValidKey | IDBKeyRange | undefined>(
         return undefined as T extends undefined
             ? SerializedQuery | undefined
             : SerializedQuery
-    if (typeof range === "object" && "lower" in range) {
+    console.log(range, range instanceof FDBKeyRange)
+    if (typeof range === "object" && range instanceof FDBKeyRange) {
         return {
             lower: range.lower,
             upper: range.upper,

@@ -155,6 +155,7 @@ const runVersionchangeTransaction = (
         const transaction = connection.transaction(
             Array.from(connection.objectStoreNames),
             "versionchange",
+            true,
         )
         request.result = connection
         request.readyState = "done"
@@ -171,7 +172,8 @@ const runVersionchangeTransaction = (
         })
         try {
             request.dispatchEvent(event)
-        } catch {
+        } catch (e) {
+            console.error("Error in dispatching upgrade event", e)
             cb(new AbortError())
         }
 
@@ -248,6 +250,12 @@ const openDatabase = async (
             if (err) {
                 // DO THIS HERE: ensure that connection is closed by running the steps for closing a database connection before these
                 // steps are aborted.
+
+                try {
+                    connection.close()
+                } catch {
+                    /* empty */
+                }
                 return cb(err)
             }
 
@@ -369,7 +377,12 @@ class FDBFactory {
 
     // https://w3c.github.io/IndexedDB/#dom-idbfactory-databases
     public async databases() {
-        return call<GetDbInfoMethod>(this._port, "getDbInfo", undefined)
+        const out = await call<GetDbInfoMethod>(
+            this._port,
+            "getDbInfo",
+            undefined,
+        )
+        return out
     }
 
     public toString() {

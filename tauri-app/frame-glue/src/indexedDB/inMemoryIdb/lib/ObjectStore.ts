@@ -85,7 +85,7 @@ class ObjectStore {
             k = key
         }
         const val = (await this._getAllRecords(k, 1)).map((r) => r.value)
-        return val[0]
+        return val.length === 0 ? undefined : val[0]
     }
 
     public async _getAllRecords(
@@ -114,17 +114,21 @@ class ObjectStore {
         }
         // starts above and awaits here because the RPC
         // executes on its own, so we can parallelize the fetches
+        const kvResult = await kvPromise
         const [values, keys] = (
             ignoreValues
-                ? [await kvPromise, await kvPromise] // if just getting keys, replace values with keys
-                : await kvPromise
+                ? [kvResult, kvResult] // if just getting keys, replace values with keys
+                : kvResult
         ) as [unknown[], IDBValidKey[]]
-        const fetchedRecords = keys.map((k, i) => {
-            return {
-                key: k,
-                value: values[i],
-            }
-        })
+
+        const fetchedRecords = keys
+            .map((k, i) => {
+                return {
+                    key: k,
+                    value: values[i],
+                }
+            })
+            .filter((v) => !this.records.modified(v.key))
 
         // in case a key in the range is updated via a transaction
         // for (const record of fetchedRecords) {
@@ -266,7 +270,7 @@ class ObjectStore {
         }
         let recordExists: boolean =
             this.records.get(newRecord.key) !== undefined
-        if (!recordExists) {
+        if (!recordExists && !this.records.modified(newRecord.key)) {
             const ct = await call<CountMethod>(
                 this.rawDatabase._port,
                 "executeReadMethod",

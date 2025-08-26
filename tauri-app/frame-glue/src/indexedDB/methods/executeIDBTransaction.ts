@@ -72,9 +72,19 @@ export function handleExecuteIDBTransactionMethod(
         "executeIDBTransactionMethod",
         async (req) => {
             const { dbName, ops: txs } = req
-            const db = openedDbs[`${docId}:${dbName}`]
-
-            const tx = db.transaction(Object.keys(txs), "readwrite")
+            const dbRecord = openedDbs[`${docId}:${dbName}`]
+            if (dbRecord === undefined) {
+                console.error("shouldn't execute txs on not opened databases")
+            }
+            const db = dbRecord.db
+            let tx
+            try {
+                tx = db.transaction(Object.keys(txs), "readwrite")
+            } catch (e) {
+                console.error("Unexpected error while execing tx", e)
+                return undefined
+            }
+            const promises = []
             for (const storeName in txs) {
                 const changes = txs[storeName]
                 const store: IDBObjectStore = tx.objectStore(storeName)
@@ -96,17 +106,21 @@ export function handleExecuteIDBTransactionMethod(
                         }
                     })
                 }
-                return new Promise((res) => {
-                    tx.oncomplete = () => {
-                        res(undefined)
-                    }
-                    tx.onerror = (e) => {
-                        throw e
-                        // e.preventDefault()
-                        // tx.commit()
-                    }
-                })
+                promises.push(
+                    new Promise((res) => {
+                        tx.oncomplete = () => {
+                            res(undefined)
+                        }
+                        tx.onerror = (e) => {
+                            throw e
+                            // e.preventDefault()
+                            // tx.commit()
+                        }
+                    }),
+                )
             }
+            await Promise.all(promises)
+            return undefined
         },
     )
 }
@@ -125,7 +139,8 @@ export async function performWriteOperation(
         }
         case "delete": {
             const { query } = change.params
-            return store.delete(deserializeQuery(query)!)
+            const out = store.delete(deserializeQuery(query)!)
+            return out
         }
         case "put": {
             const { value, key } = change.params
