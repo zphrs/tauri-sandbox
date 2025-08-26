@@ -88,8 +88,8 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbindex-rename.any.js
 -   [x] idbindex-request-source.any.js
 -   [x] idbindex_count.any.js
--   [ ] idbindex_get.any.js
--   [ ] idbindex_getAll-options.tentative.any.js
+-   [x] idbindex_get.any.js
+-   [/] idbindex_getAll-options.tentative.any.js
 -   [ ] idbindex_getAll.any.js
 -   [ ] idbindex_getAllKeys-options.tentative.any.js
 -   [ ] idbindex_getAllKeys.any.js

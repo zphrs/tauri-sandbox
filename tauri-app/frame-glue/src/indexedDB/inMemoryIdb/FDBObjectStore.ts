@@ -505,7 +505,7 @@ class FDBObjectStore {
         // doesn't matter that we're pushing this early; tx will abort if init fails
         this._updateWriteLog.push({
             method: "createIndex",
-            params: { name, keyPath, options: optionalParameters },
+            params: { name, keyPath, options: { multiEntry, unique } },
         })
 
         return new FDBIndex(this, index)

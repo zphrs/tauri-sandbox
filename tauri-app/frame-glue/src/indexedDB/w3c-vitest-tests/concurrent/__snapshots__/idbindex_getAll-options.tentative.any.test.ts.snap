@@ -1,0 +1,44 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`IDBIndex.getAll() with options dictionary > Retrieve one key multiple values 1`] = `
+[
+  {
+    "attribs": [
+      "vowel",
+      "first",
+    ],
+    "ch": "a",
+  },
+  {
+    "attribs": [
+      "vowel",
+      "first",
+    ],
+    "ch": "a",
+  },
+  {
+    "attribs": [
+      "vowel",
+    ],
+    "ch": "e",
+  },
+  {
+    "attribs": [
+      "vowel",
+    ],
+    "ch": "i",
+  },
+  {
+    "attribs": [
+      "vowel",
+    ],
+    "ch": "o",
+  },
+  {
+    "attribs": [
+      "vowel",
+    ],
+    "ch": "u",
+  },
+]
+`;

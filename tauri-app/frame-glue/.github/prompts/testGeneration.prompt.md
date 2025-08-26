@@ -1,6 +1,7 @@
 ---
 mode: agent
-tools: [
+tools:
+    [
         "codebase",
         "problems",
         "testFailure",
@@ -34,4 +35,4 @@ Make sure to call #ref:cleanupDbRefAfterTest if you manually call `idb.open()` i
 
 Place the new test in #file:../../src/indexedDB/w3c-vitest-tests/concurrent if the test does not interract with other tests' databases, otherwise place the new tests in #file:../../src/indexedDB/w3c-vitest-tests/serial .
 
-Be sure to fix all typescript and linting problems in the workspace pertaining to the new typescript file with #problems . After the test is written, check that the tests pass by running them with #runTests . If the tests passed then check off the item in the todo list with an X, otherwise mark the item with a slash (/).
+Be sure to fix all typescript and linting problems in the workspace pertaining to the new typescript file with #problems . After the test is written, check that the tests pass by running them with #runTests . If the tests passed then check off the item in the todo list with an X, otherwise skip the failing tests with `test.skip()` and mark the item with a slash (/).

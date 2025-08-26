@@ -151,6 +151,8 @@ class Index {
             })
             .filter((v) => !this.rawObjectStore.records.modified(v.value))
 
+        console.log({ fetchedRecords })
+
         // mergesort
         const out: Record[] = []
         let i = 0,
