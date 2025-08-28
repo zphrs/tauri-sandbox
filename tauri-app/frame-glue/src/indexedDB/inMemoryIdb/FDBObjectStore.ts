@@ -116,7 +116,11 @@ class FDBObjectStore {
         if (!justCreated) {
             this._nameBeforeTxStart = this._name
         }
-        this.keyPath = rawObjectStore.keyPath
+        // Create a copy of the keyPath if it's an array to ensure each object store instance
+        // has its own array reference, as required by the W3C spec
+        this.keyPath = Array.isArray(rawObjectStore.keyPath)
+            ? structuredClone(rawObjectStore.keyPath)
+            : rawObjectStore.keyPath
         this.autoIncrement = rawObjectStore.autoIncrement
 
         this.transaction = transaction

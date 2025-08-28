@@ -102,6 +102,7 @@ export type GetNextFromCursor = Notification<
         indexName?: string
         currPrimaryKey?: IDBValidKey | undefined
         prevPrimaryKey?: IDBValidKey | undefined
+        justKeys: boolean
     }
 >
 
@@ -150,7 +151,12 @@ export type GetWithKeyMethod = ExecuteReadMethod<
 >
 export type GetNextFromCursorMethod = ExecuteReadMethod<
     GetNextFromCursor,
-    { key: IDBValidKey; value: unknown; primaryKey: IDBValidKey } | undefined
+    | {
+          key: IDBValidKey
+          value: unknown
+          primaryKey: IDBValidKey
+      }
+    | undefined
 >
 
 export type ExecuteReadMethod<R extends Read, Return> = Method<
@@ -262,6 +268,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                     indexName,
                     currPrimaryKey,
                     prevPrimaryKey,
+                    justKeys,
                 } = call.params
                 const range = (
                     serializedRange
@@ -269,9 +276,15 @@ export function handleReadMethod(port: MessagePort, docId: string) {
                         : undefined
                 ) as IDBKeyRange
 
-                const cursorRequest = indexName
-                    ? objStore.index(indexName).openCursor(range, direction)
-                    : objStore.openCursor(range, direction)
+                const parentObject = indexName
+                    ? objStore.index(indexName)
+                    : objStore
+                const cursorRequest: IDBRequest<IDBCursor | null> = justKeys
+                    ? parentObject.openKeyCursor(range, direction)
+                    : (parentObject.openCursor(
+                          range,
+                          direction,
+                      ) as IDBRequest<IDBCursor | null>)
 
                 let cursor = await requestToPromise(cursorRequest)
                 if (cursor === null) {
@@ -307,7 +320,7 @@ export function handleReadMethod(port: MessagePort, docId: string) {
 
                 return {
                     key: cursor.key,
-                    value: cursor.value,
+                    value: "value" in cursor ? cursor.value : undefined,
                     primaryKey: cursor.primaryKey,
                 }
             } else if (call.method === "getAllRecords") {

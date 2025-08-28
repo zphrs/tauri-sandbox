@@ -64,6 +64,7 @@ export function handleOpenDatabase(port: MessagePort, docId: string) {
             req.onupgradeneeded = () => {
                 const db = req.result
                 for (const upgradeAction of doOnUpgrade) {
+                    console.log(upgradeAction)
                     switch (upgradeAction.method) {
                         case "createObjectStore": {
                             const { name, options } = upgradeAction.params
@@ -169,6 +170,7 @@ function handleObjectStoreActions(
                 break
             }
             default: {
+                console.log("GOING TO PERFORM", ua)
                 performWriteOperation(ua, store).then((opReq) => {
                     opReq.onerror = (e) => {
                         console.warn("error while executing write op: ", e)

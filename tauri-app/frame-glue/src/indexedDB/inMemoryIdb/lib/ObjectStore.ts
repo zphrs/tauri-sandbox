@@ -22,7 +22,20 @@ class ObjectStore {
     public readonly rawDatabase: Database
     public readonly records = new RecordStore()
     public readonly rawIndexes: Map<string, Index> = new Map()
-    public name: string
+    #oldName: string | undefined = undefined
+    get committedName() {
+        return this.#oldName ?? this.name
+    }
+    public _name: string
+    get name() {
+        return this._name
+    }
+    set name(v: string) {
+        if (this.#oldName === undefined) {
+            this.#oldName = this._name
+        }
+        this._name = v
+    }
     public readonly keyPath: KeyPath | null
     public readonly autoIncrement: boolean
     public readonly keyGenerator: KeyGenerator | null
@@ -37,7 +50,7 @@ class ObjectStore {
         this.keyGenerator = autoIncrement === true ? new KeyGenerator() : null
         this.deleted = false
 
-        this.name = name
+        this._name = name
         this.keyPath = keyPath
         this.autoIncrement = autoIncrement
     }
@@ -60,6 +73,14 @@ class ObjectStore {
         return (await this._getAllRecords(range, count, true)).map((r) => r.key)
     }
 
+    public cleanupAfterCompletedTransaction() {
+        this.#oldName = undefined
+        this.records.cleanupAfterCompletedTransaction()
+        for (const index of this.rawIndexes.values()) {
+            index.cleanupAfterCompletedTransaction()
+        }
+    }
+
     private async executeReadMethod<
         Method extends ExecuteReadMethod<Read, unknown>,
     >(
@@ -70,7 +91,7 @@ class ObjectStore {
         return await call<Method>(this.rawDatabase._port, "executeReadMethod", {
             params: {
                 dbName: this.rawDatabase.name,
-                store: this.name,
+                store: this.committedName,
                 call: readCall,
             },
             transferableObjects: [],

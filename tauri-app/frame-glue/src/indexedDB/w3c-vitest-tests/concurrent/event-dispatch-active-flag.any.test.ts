@@ -1,6 +1,6 @@
 import { describe, test, expect, onTestFinished } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
-import { TransactionInactiveError } from "../../inMemoryIdb/lib/errors"
+import { InvalidStateError } from "../../inMemoryIdb/lib/errors"
 
 // Port of w3c test: event-dispatch-active-flag.any.js
 // Tests that transaction active flag is set during event dispatch
@@ -13,7 +13,7 @@ function isTransactionActive(tx: IDBTransaction, storeName: string): boolean {
         promise = requestToPromise(tx.objectStore(storeName).get(0))
         out = true
     } catch (e) {
-        expect(e).toBeInstanceOf(TransactionInactiveError)
+        expect(e).toBeInstanceOf(InvalidStateError)
         out = false
     }
     onTestFinished(async () => {

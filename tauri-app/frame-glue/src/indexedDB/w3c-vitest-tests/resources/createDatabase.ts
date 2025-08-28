@@ -1,5 +1,5 @@
 import { afterAll, onTestFinished } from "vitest"
-import { FDBFactory } from "../../index"
+import { FDBFactory, FDBOpenDBRequest } from "../../index"
 import { setupIDBMethodHandlersFromPort } from "../../methods"
 import { requestToPromise } from "../../methods/readFromStore"
 
@@ -12,37 +12,6 @@ function setupPort() {
 }
 
 export const idb = new FDBFactory(setupPort())
-
-// Helper function to create a database with a name for the testsuite
-// (like createDatabase in original)
-export async function createDatabase(
-    t: { id?: string },
-    onUpgradeNeeded: (db: IDBDatabase) => void,
-): Promise<IDBDatabase> {
-    const dbName = t.id
-    const dbname = dbName || "testdb-" + new Date().getTime() + Math.random()
-    const req = idb.open(dbname)
-    const out = new Promise<IDBDatabase>((res, rej) => {
-        req.onupgradeneeded = () => {
-            try {
-                onUpgradeNeeded(req.result)
-            } catch (e) {
-                rej(e)
-            }
-        }
-
-        requestToPromise(req as unknown as IDBRequest<IDBDatabase>)
-            .then((out) => {
-                res(out)
-                cleanupDbRefAfterTest(out)
-            })
-            .catch((err) => {
-                rej(err)
-            })
-    })
-
-    return out
-}
 
 export async function cleanupDbRefAfterTest(db: IDBDatabase) {
     try {
@@ -62,6 +31,48 @@ export async function cleanupDbRefAfterTest(db: IDBDatabase) {
     }
 }
 
+// Helper function to create a database with a name for the testsuite
+// (like createDatabase in original)
+export async function createDatabase(
+    t: { id?: string },
+    onUpgradeNeeded: (db: IDBDatabase, tx: IDBTransaction) => void,
+): Promise<IDBDatabase> {
+    const dbName = t.id
+    const dbname = dbName || "testdb-" + new Date().getTime() + Math.random()
+    const req = idb.open(dbname)
+    const out = await idbOpenToPromise(req, onUpgradeNeeded)
+
+    cleanupDbRefAfterTest(out)
+    return out
+}
+
+function idbOpenToPromise(
+    req: FDBOpenDBRequest,
+    onUpgradeNeeded: (db: IDBDatabase, tx: IDBTransaction) => void,
+) {
+    return new Promise<IDBDatabase>((res, rej) => {
+        req.onupgradeneeded = () => {
+            try {
+                onUpgradeNeeded(
+                    req.result,
+                    req.transaction! as unknown as IDBTransaction,
+                )
+            } catch (e) {
+                rej(e)
+            }
+        }
+
+        requestToPromise(req as unknown as IDBRequest<IDBDatabase>)
+            .then((out) => {
+                res(out)
+                cleanupDbRefAfterTest(out)
+            })
+            .catch((err) => {
+                rej(err)
+            })
+    })
+}
+
 // Helper function to create a named database (equivalent to createNamedDatabase in original)
 export async function createNamedDatabase(
     _t: { id?: string },
@@ -72,12 +83,8 @@ export async function createNamedDatabase(
     await requestToPromise(idb.deleteDatabase(dbname) as unknown as IDBRequest)
 
     const req = idb.open(dbname, 1)
-    req.onupgradeneeded = () => {
-        onUpgradeNeeded(req.result)
-    }
-    const out = await requestToPromise(
-        req as unknown as IDBRequest<IDBDatabase>,
-    )
+    const out = await idbOpenToPromise(req, onUpgradeNeeded)
+
     cleanupDbRefAfterTest(out)
 
     return out
@@ -91,15 +98,7 @@ export async function migrateNamedDatabase(
     onUpgradeNeeded: (db: IDBDatabase, tx: IDBTransaction) => void,
 ): Promise<IDBDatabase> {
     const req = idb.open(dbname, newVersion)
-    req.onupgradeneeded = () => {
-        onUpgradeNeeded(
-            req.result,
-            req.transaction! as unknown as IDBTransaction,
-        )
-    }
-    const out = await requestToPromise(
-        req as unknown as IDBRequest<IDBDatabase>,
-    )
+    const out = await idbOpenToPromise(req, onUpgradeNeeded)
 
     cleanupDbRefAfterTest(out)
     return out

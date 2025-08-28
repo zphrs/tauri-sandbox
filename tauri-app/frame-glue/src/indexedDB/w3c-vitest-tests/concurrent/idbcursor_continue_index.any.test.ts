@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
-import { InvalidStateError } from "../../inMemoryIdb/lib/errors"
+import { AbortError, InvalidStateError } from "../../inMemoryIdb/lib/errors"
 
 // Port of w3c test: idbcursor_continue_index.any.js
 // Tests IDBCursor.continue() method on indexes
@@ -252,9 +252,8 @@ describe("IDBCursor.continue() - index", () => {
             { pKey: "primaryKey_0", iKey: "indexKey_0" },
             { pKey: "primaryKey_1", iKey: "indexKey_1" },
         ]
-
-        return new Promise<void>((resolve, reject) => {
-            createDatabase(task, (database) => {
+        try {
+            await createDatabase(task, (database) => {
                 const objStore = createObjectStoreWithIndexAndPopulate(
                     database,
                     records,
@@ -265,17 +264,14 @@ describe("IDBCursor.continue() - index", () => {
                     expect(cursor).toBeInstanceOf(Object) // IDBCursor
                     ;(event.target as IDBRequest).transaction!.abort()
 
-                    try {
-                        expect(() => {
-                            cursor.continue()
-                        }).toThrow() // Should throw TransactionInactiveError
-                        resolve()
-                    } catch (error) {
-                        reject(error)
-                    }
+                    expect(() => {
+                        cursor.continue()
+                    }).toThrow() // Should throw TransactionInactiveError
                 }
             })
-        })
+        } catch (e) {
+            expect((e as DOMException).name).toBe("AbortError")
+        }
     })
 
     test("If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError", async ({

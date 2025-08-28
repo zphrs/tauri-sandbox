@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
+import { InvalidStateError } from "../../inMemoryIdb/lib/errors"
 
 // Port of w3c test: idbcursor_delete_index.any.js
 // Tests IDBCursor.delete() method on indexes
@@ -175,30 +176,27 @@ describe("IDBCursor.delete() - index", () => {
             { pKey: "primaryKey_1", iKey: "indexKey_1" },
         ]
 
-        return new Promise<void>((resolve, reject) => {
-            createDatabase(task, (database) => {
-                const objStore = createObjectStoreWithIndexAndPopulate(
-                    database,
-                    records,
-                )
-                const rq = objStore.index("index").openCursor()
+        const promise = createDatabase(task, (database) => {
+            const objStore = createObjectStoreWithIndexAndPopulate(
+                database,
+                records,
+            )
+            const rq = objStore.index("index").openCursor()
 
-                rq.onsuccess = (event) => {
-                    const cursor = (event.target as IDBRequest).result
-                    expect(cursor).toBeInstanceOf(Object) // IDBCursor
+            rq.onsuccess = (event) => {
+                const cursor = (event.target as IDBRequest).result
+                expect(cursor).toBeInstanceOf(Object) // IDBCursor
 
-                    cursor.continue()
-
-                    try {
-                        expect(() => {
-                            cursor.delete()
-                        }).toThrow() // Should throw InvalidStateError
-                        resolve()
-                    } catch (error) {
-                        reject(error)
-                    }
-                }
-            })
+                cursor.continue()
+                expect(() => {
+                    cursor.delete()
+                }).toThrow(InvalidStateError) // Should throw InvalidStateError
+            }
         })
+        try {
+            await promise
+        } catch (e) {
+            expect((e as DOMException).name).toBe("AbortError")
+        }
     })
 })

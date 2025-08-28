@@ -1,23 +1,22 @@
 import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
 import {
+    ConstraintError,
     DataError,
-    ReadOnlyError,
     InvalidStateError,
+    ReadOnlyError,
 } from "../../inMemoryIdb/lib/errors"
 
-import { FDBRequest as IDBRequest } from "../../inMemoryIdb"
+// Port of w3c test: idbobjectstore_put.any.js
+// Tests IDBObjectStore.put() method functionality
 
-// Port of w3c test: idbobjectstore_add.any.js
-// Tests IDBObjectStore.add() method functionality
-
-describe("IDBObjectStore.add()", () => {
-    test("add() with an inline key", async ({ task }) => {
+describe("IDBObjectStore.put()", () => {
+    test("put() with an inline key", async ({ task }) => {
         const record = { key: 1, property: "data" }
 
         const db = await createDatabase(task, (db) => {
             const objStore = db.createObjectStore("store", { keyPath: "key" })
-            objStore.add(record)
+            objStore.put(record)
         })
 
         const tx = db.transaction("store", "readonly")
@@ -28,13 +27,13 @@ describe("IDBObjectStore.add()", () => {
         expect(result.key).toBe(record.key)
     })
 
-    test("add() with an out-of-line key", async ({ task }) => {
+    test("put() with an out-of-line key", async ({ task }) => {
         const key = 1
         const record = { property: "data" }
 
         const db = await createDatabase(task, (db) => {
             const objStore = db.createObjectStore("store")
-            objStore.add(record, key)
+            objStore.put(record, key)
         })
 
         const tx = db.transaction("store", "readonly")
@@ -44,69 +43,56 @@ describe("IDBObjectStore.add()", () => {
         expect(result.property).toBe(record.property)
     })
 
-    test("add() record with same key already exists", async ({ task }) => {
+    test("put() record with key already exists", async ({ task }) => {
         const record = { key: 1, property: "data" }
+        const recordPut = { key: 1, property: "changed", more: ["stuff", 2] }
 
-        await createDatabase(task, (db) => {
+        const db = await createDatabase(task, (db) => {
             const objStore = db.createObjectStore("store", { keyPath: "key" })
-            objStore.add(record)
-            const rq = objStore.add(record)
-            rq.onsuccess = () => {
-                throw new Error("success on adding duplicate record")
-            }
-
-            rq.onerror = (e) => {
-                const target = e.target as unknown as IDBRequest
-                expect(target).toBe(rq)
-                expect(e.type).toBe("error")
-                expect(rq.error?.name).toBe("ConstraintError")
-                expect(target?.error?.name).toBe("ConstraintError")
-                e.preventDefault()
-                e.stopPropagation()
-            }
+            objStore.put(record)
+            const rq = objStore.put(recordPut)
+            expect(rq).toBeInstanceOf(Object) // IDBRequest
         })
 
-        // Test passes if we reach here without throwing
+        const tx = db.transaction("store", "readonly")
+        const store = tx.objectStore("store")
+        const result = await requestToPromise(store.get(1))
+
+        expect(result.key).toBe(recordPut.key)
+        expect(result.property).toBe(recordPut.property)
+        expect(result.more).toEqual(recordPut.more)
     })
 
-    test("add() where an index has unique:true specified", async ({ task }) => {
+    test("put() where an index has unique:true specified", async ({ task }) => {
         const record = { key: 1, property: "data" }
 
-        await createDatabase(task, (db) => {
+        await createDatabase(task, async (db, tx) => {
             const objStore = db.createObjectStore("store", {
                 autoIncrement: true,
             })
-            objStore.createIndex("i1", "property", { unique: true })
-            objStore.add(record)
-
-            const rq = objStore.add(record)
-            rq.onsuccess = () => {
-                throw new Error("success on adding duplicate indexed record")
-            }
-
-            rq.onerror = (e) => {
-                expect(rq.error?.name).toBe("ConstraintError")
-                const target = e.target as unknown as IDBRequest
-                expect(target?.error?.name).toBe("ConstraintError")
-                expect(e.type).toBe("error")
+            tx.onerror = (e) => {
                 e.preventDefault()
-                e.stopPropagation()
+                expect((e.target as IDBRequest).error).toBeInstanceOf(
+                    ConstraintError,
+                )
             }
-        })
+            objStore.createIndex("i1", "property", { unique: true })
+            objStore.put(record)
 
-        // Test passes if we reach here without throwing
+            await expect(
+                requestToPromise(objStore.put(record)),
+            ).rejects.toThrow(ConstraintError)
+        })
     })
 
-    test("add() object store's key path is an object attribute", async ({
-        task,
-    }) => {
+    test("Object store's key path is an object attribute", async ({ task }) => {
         const record = { test: { obj: { key: 1 } }, property: "data" }
 
         const db = await createDatabase(task, (db) => {
             const objStore = db.createObjectStore("store", {
                 keyPath: "test.obj.key",
             })
-            objStore.add(record)
+            objStore.put(record)
         })
 
         const tx = db.transaction("store", "readonly")
@@ -116,7 +102,7 @@ describe("IDBObjectStore.add()", () => {
         expect(result.property).toBe(record.property)
     })
 
-    test("add() autoIncrement and inline keys", async ({ task }) => {
+    test("autoIncrement and inline keys", async ({ task }) => {
         const record = { property: "data" }
         const expectedKeys = [1, 2, 3, 4]
 
@@ -126,54 +112,55 @@ describe("IDBObjectStore.add()", () => {
                 autoIncrement: true,
             })
 
-            objStore.add(record)
-            objStore.add(record)
-            objStore.add(record)
-            objStore.add(record)
+            objStore.put(record)
+            objStore.put(record)
+            objStore.put(record)
+            objStore.put(record)
         })
 
         const tx = db.transaction("store", "readonly")
         const store = tx.objectStore("store")
-        const request = store.openCursor()
+        const cursorRequest = store.openCursor()
 
-        const actualKeys: number[] = []
-        let cursor = await requestToPromise(request)
+        const actualKeys: IDBValidKey[] = []
+        let cursor = await requestToPromise(cursorRequest)
 
         while (cursor) {
             actualKeys.push(cursor.value.key)
             cursor.continue()
-            cursor = await requestToPromise(request)
+            cursor = await requestToPromise(cursorRequest)
         }
 
         expect(actualKeys).toEqual(expectedKeys)
     })
 
-    test("add() autoIncrement and out-of-line keys", async ({ task }) => {
+    test("autoIncrement and out-of-line keys", async ({ task }) => {
         const record = { property: "data" }
         const expectedKeys = [1, 2, 3, 4]
 
         const db = await createDatabase(task, (db) => {
             const objStore = db.createObjectStore("store", {
+                keyPath: "key",
                 autoIncrement: true,
             })
 
-            objStore.add(record)
-            objStore.add(record)
-            objStore.add(record)
-            objStore.add(record)
+            objStore.put(record)
+            objStore.put(record)
+            objStore.put(record)
+            objStore.put(record)
         })
 
         const tx = db.transaction("store", "readonly")
         const store = tx.objectStore("store")
-        const request = store.openCursor()
+        const cursorRequest = store.openCursor()
 
-        const actualKeys: number[] = []
-        let cursor = await requestToPromise(request)
+        const actualKeys: IDBValidKey[] = []
+        let cursor = await requestToPromise(cursorRequest)
 
         while (cursor) {
-            actualKeys.push(cursor.key as number)
+            actualKeys.push(cursor.value.key)
             cursor.continue()
-            cursor = await requestToPromise(request)
+            cursor = await requestToPromise(cursorRequest)
         }
 
         expect(actualKeys).toEqual(expectedKeys)
@@ -191,29 +178,29 @@ describe("IDBObjectStore.add()", () => {
                 autoIncrement: true,
             })
 
-            objStore.add(record)
-            objStore.add(record)
-            objStore.add(record)
-            objStore.add(record)
+            objStore.put(record)
+            objStore.put(record)
+            objStore.put(record)
+            objStore.put(record)
         })
 
         const tx = db.transaction("store", "readonly")
         const store = tx.objectStore("store")
-        const request = store.openCursor()
+        const cursorRequest = store.openCursor()
 
-        const actualKeys: number[] = []
-        let cursor = await requestToPromise(request)
+        const actualKeys: IDBValidKey[] = []
+        let cursor = await requestToPromise(cursorRequest)
 
         while (cursor) {
             actualKeys.push(cursor.value.test.obj.key)
             cursor.continue()
-            cursor = await requestToPromise(request)
+            cursor = await requestToPromise(cursorRequest)
         }
 
         expect(actualKeys).toEqual(expectedKeys)
     })
 
-    test("Attempt to 'add()' a record that does not meet the constraints of an object store's inline key requirements", async ({
+    test("Attempt to put() a record that does not meet the constraints of an object store's inline key requirements", async ({
         task,
     }) => {
         const record = { key: 1, property: "data" }
@@ -222,26 +209,26 @@ describe("IDBObjectStore.add()", () => {
             const objStore = db.createObjectStore("store", { keyPath: "key" })
 
             expect(() => {
-                objStore.add(record, 1)
+                objStore.put(record, 1)
             }).toThrow(DataError)
         })
     })
 
-    test("Attempt to call 'add()' without a key parameter when the object store uses out-of-line keys", async ({
+    test("Attempt to call put() without an key parameter when the object store uses out-of-line keys", async ({
         task,
     }) => {
         const record = { property: "data" }
 
         await createDatabase(task, (db) => {
-            const objStore = db.createObjectStore("store")
+            const objStore = db.createObjectStore("store", { keyPath: "key" })
 
             expect(() => {
-                objStore.add(record)
+                objStore.put(record)
             }).toThrow(DataError)
         })
     })
 
-    test("Attempt to 'add()' a record where the record's key does not meet the constraints of a valid key", async ({
+    test("Attempt to put() a record where the record's key does not meet the constraints of a valid key", async ({
         task,
     }) => {
         const record = { key: { value: 1 }, property: "data" }
@@ -250,12 +237,12 @@ describe("IDBObjectStore.add()", () => {
             const objStore = db.createObjectStore("store", { keyPath: "key" })
 
             expect(() => {
-                objStore.add(record)
+                objStore.put(record)
             }).toThrow(DataError)
         })
     })
 
-    test("Attempt to 'add()' a record where the record's in-line key is not defined", async ({
+    test("Attempt to put() a record where the record's in-line key is not defined", async ({
         task,
     }) => {
         const record = { property: "data" }
@@ -264,12 +251,12 @@ describe("IDBObjectStore.add()", () => {
             const objStore = db.createObjectStore("store", { keyPath: "key" })
 
             expect(() => {
-                objStore.add(record)
+                objStore.put(record)
             }).toThrow(DataError)
         })
     })
 
-    test("Attempt to 'add()' a record where the out of line key provided does not meet the constraints of a valid key", async ({
+    test("Attempt to put() a record where the out of line key provided does not meet the constraints of a valid key", async ({
         task,
     }) => {
         const record = { property: "data" }
@@ -278,12 +265,12 @@ describe("IDBObjectStore.add()", () => {
             const objStore = db.createObjectStore("store")
 
             expect(() => {
-                objStore.add(record, {} as IDBValidKey) // Invalid object as key
+                objStore.put(record, { value: 1 } as unknown as IDBValidKey)
             }).toThrow(DataError)
         })
     })
 
-    test("add() a record where a value being indexed does not meet the constraints of a valid key", async ({
+    test("put() a record where a value being indexed does not meet the constraints of a valid key", async ({
         task,
     }) => {
         const record = { key: 1, indexedProperty: { property: "data" } }
@@ -292,11 +279,9 @@ describe("IDBObjectStore.add()", () => {
             const objStore = db.createObjectStore("store", { keyPath: "key" })
             objStore.createIndex("index", "indexedProperty")
 
-            const rq = objStore.add(record)
-            expect(rq).toBeInstanceOf(IDBRequest)
+            const rq = objStore.put(record)
+            expect(rq).toBeInstanceOf(Object) // IDBRequest
         })
-
-        // Test passes if we reach here without throwing
     })
 
     test("If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError", async ({
@@ -310,19 +295,21 @@ describe("IDBObjectStore.add()", () => {
         const ostore = txn.objectStore("store")
 
         expect(() => {
-            ostore.add({ pKey: "primaryKey_0" })
+            ostore.put({ pKey: "primaryKey_0" })
         }).toThrow(ReadOnlyError)
     })
 
     test("If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError", async ({
         task,
     }) => {
+        let ostore: IDBObjectStore
+
         await createDatabase(task, (db) => {
-            const ostore = db.createObjectStore("store", { keyPath: "pKey" })
+            ostore = db.createObjectStore("store", { keyPath: "pKey" })
             db.deleteObjectStore("store")
 
             expect(() => {
-                ostore.add({ pKey: "primaryKey_0" })
+                ostore.put({ pKey: "primaryKey_0" })
             }).toThrow(InvalidStateError)
         })
     })

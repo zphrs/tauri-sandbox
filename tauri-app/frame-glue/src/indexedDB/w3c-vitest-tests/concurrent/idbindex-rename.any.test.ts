@@ -44,6 +44,7 @@ async function checkAuthorIndexContents(index: IDBIndex) {
 async function checkTitleIndexContents(index: IDBIndex) {
     const request = index.get(BOOKS_RECORD_DATA[2].title)
     const result = await requestToPromise(request)
+    console.log(request, result)
     expect(result.isbn).toBe(BOOKS_RECORD_DATA[2].isbn)
     expect(result.author).toBe(BOOKS_RECORD_DATA[2].author)
 }

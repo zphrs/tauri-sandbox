@@ -100,24 +100,33 @@ export function handleExecuteIDBTransactionMethod(
                         // onerror handler."
                         // we warn of the error just in case.
                         opReq.onerror = (e) => {
-                            console.warn("error while executing write op: ", e)
+                            console.warn(
+                                "error while executing write op: ",
+                                change,
+                                e,
+                                (e.target as IDBRequest)?.error,
+                            )
                             e.preventDefault()
-                            // tx.commit()
+                            e.stopPropagation()
                         }
                     })
                 }
-                promises.push(
-                    new Promise((res) => {
-                        tx.oncomplete = () => {
-                            res(undefined)
-                        }
-                        tx.onerror = (e) => {
-                            throw e
-                            // e.preventDefault()
-                            // tx.commit()
-                        }
-                    }),
-                )
+                if (changes.length > 0) {
+                    promises.push(
+                        new Promise((res, rej) => {
+                            tx.oncomplete = () => {
+                                res(undefined)
+                            }
+                            tx.onerror = (e) => {
+                                console.log("ERR ON TX")
+                                rej(e)
+                                throw e
+                                // e.preventDefault()
+                                // tx.commit()
+                            }
+                        }),
+                    )
+                }
             }
             await Promise.all(promises)
             return undefined

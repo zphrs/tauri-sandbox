@@ -22,7 +22,21 @@ class Index {
     public initialized = false
     public readonly rawObjectStore: ObjectStore
     public readonly records = new RecordStore()
-    public name: string
+    #oldName: string | undefined = undefined
+    get #committedName() {
+        return this.#oldName ?? this.name
+    }
+
+    public _name: string
+    get name() {
+        return this._name
+    }
+    set name(v: string) {
+        if (this.#oldName === undefined) {
+            this.#oldName = this._name
+        }
+        this._name = v
+    }
     public readonly keyPath: KeyPath
     public multiEntry: boolean
     public unique: boolean
@@ -36,7 +50,7 @@ class Index {
     ) {
         this.rawObjectStore = rawObjectStore
 
-        this.name = name
+        this._name = name
         this.keyPath = keyPath
         this.multiEntry = multiEntry
         this.unique = unique
@@ -106,12 +120,17 @@ class Index {
             {
                 params: {
                     dbName: this.rawObjectStore.rawDatabase.name,
-                    store: this.rawObjectStore.name,
+                    store: this.rawObjectStore.committedName,
                     call: readCall,
                 },
                 transferableObjects: [],
             },
         )
+    }
+
+    public cleanupAfterCompletedTransaction() {
+        this.#oldName = undefined
+        this.records.cleanupAfterCompletedTransaction()
     }
 
     public async _getAllRecords(
@@ -125,7 +144,7 @@ class Index {
         const kvPromise = this._executeReadMethod<GetAllRecordsFromIndexMethod>(
             "getAllRecordsFromIndex",
             {
-                indexName: this.name,
+                indexName: this.#committedName,
                 query: range,
                 count: Number.isFinite(count) ? count : undefined,
             },

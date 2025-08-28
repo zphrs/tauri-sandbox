@@ -136,7 +136,6 @@ describe("IDBObjectStore rename in aborted transaction", () => {
         try {
             await promise
         } catch {
-            console.log("expected abort")
             abortHappened = true
         }
         expect(abortHappened).toBe(true)

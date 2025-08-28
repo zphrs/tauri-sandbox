@@ -133,21 +133,21 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbobjectstore_getAllKeys.any.js
 -   [x] idbobjectstore_getKey.any.js
 -   [x] idbobjectstore_index.any.js
--   [ ] idbobjectstore_keyPath.any.js
--   [ ] idbobjectstore_openCursor.any.js
--   [ ] idbobjectstore_openCursor_invalid.any.js
--   [ ] idbobjectstore_openKeyCursor.any.js
--   [ ] idbobjectstore_put.any.js
--   [ ] idbrequest-onupgradeneeded.any.js
--   [ ] idbrequest_error.any.js
--   [ ] idbrequest_result.any.js
--   [ ] idbtransaction-db-SameObject.any.js
--   [ ] idbtransaction-objectStore-exception-order.any.js
--   [ ] idbtransaction-objectStore-finished.any.js
--   [ ] idbtransaction-oncomplete.any.js
--   [ ] idbtransaction.any.js
--   [ ] idbtransaction_abort.any.js
--   [ ] idbtransaction_objectStoreNames.any.js
+-   [x] idbobjectstore_keyPath.any.js
+-   [x] idbobjectstore_openCursor.any.js
+-   [x] idbobjectstore_openCursor_invalid.any.js
+-   [x] idbobjectstore_openKeyCursor.any.js
+-   [x] idbobjectstore_put.any.js
+-   [x] idbrequest-onupgradeneeded.any.js
+-   [x] idbrequest_error.any.js
+-   [x] idbrequest_result.any.js
+-   [x] idbtransaction-db-SameObject.any.js
+-   [x] idbtransaction-objectStore-exception-order.any.js
+-   [x] idbtransaction-objectStore-finished.any.js
+-   [x] idbtransaction-oncomplete.any.js
+-   [x] idbtransaction.any.js
+-   [x] idbtransaction_abort.any.js
+-   [/] idbtransaction_objectStoreNames.any.js
 -   [ ] idbversionchangeevent.any.js
 -   [ ] idlharness.any.js
 -   [ ] index_sort_order.any.js

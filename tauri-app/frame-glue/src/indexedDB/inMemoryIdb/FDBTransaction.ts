@@ -79,12 +79,12 @@ class FDBTransaction extends FakeEventTarget {
 
     // http://www.w3.org/TR/2015/REC-IndexedDB-20150108/#dfn-steps-for-aborting-a-transaction
     public _abort(errName: string | null) {
-        console.warn("ABORTING")
         for (const f of this._rollbackLog.reverse()) {
             f()
         }
-
-        if (errName !== null) {
+        if (errName === "AbortError") {
+            this.error = new AbortError()
+        } else if (errName !== null) {
             const e = new DOMException(undefined, errName)
             this.error = e
         }
@@ -137,7 +137,7 @@ class FDBTransaction extends FakeEventTarget {
     // http://w3c.github.io/IndexedDB/#dom-idbtransaction-objectstore
     public objectStore(name: string, _justCreated: boolean = false) {
         if (this._state !== "active") {
-            throw new TransactionInactiveError()
+            throw new InvalidStateError()
         }
 
         const objectStore = this._objectStoresCache.get(name)
@@ -153,7 +153,7 @@ class FDBTransaction extends FakeEventTarget {
         let writeActionArr: Write[] | undefined = undefined
 
         if (this.mode === "versionchange") {
-            const found = this._upgradeActions.find(
+            const found = this._upgradeActions.findLast(
                 (v) =>
                     (v.method === "createObjectStore" ||
                         v.method === "modifyObjectStore") &&
@@ -299,7 +299,6 @@ class FDBTransaction extends FakeEventTarget {
                 // Default action of event
                 if (!event.canceled) {
                     if (defaultAction) {
-                        console.log("EXECING DEFAULT ACTION")
                         defaultAction()
                     }
                 }
@@ -318,10 +317,7 @@ class FDBTransaction extends FakeEventTarget {
         if (this._state !== "finished") {
             // clear all modifications for the next transaction
             for (const objectStore of this._objectStoresCache.values()) {
-                objectStore._rawObjectStore.records.cleanupAfterCompletedTransaction()
-                for (const index of objectStore._rawObjectStore.rawIndexes.values()) {
-                    index.records.cleanupAfterCompletedTransaction()
-                }
+                objectStore._rawObjectStore.cleanupAfterCompletedTransaction()
             }
             // Either aborted or committed already
             this._state = "finished"
@@ -340,8 +336,6 @@ class FDBTransaction extends FakeEventTarget {
                         this._writeActions,
                     )
                 }
-            }
-            if (!this.error) {
                 const event = new FakeEvent("complete")
                 this.dispatchEvent(event)
             }

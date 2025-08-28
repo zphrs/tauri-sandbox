@@ -154,7 +154,6 @@ class FDBCursor {
     public async _iterate(key?: Key, primaryKey?: Key): Promise<this | null> {
         // if (this._range === undefined) throw new InvalidStateError()
         const sourceIsObjectStore = this.source instanceof FDBObjectStore
-
         // Can't use sourceIsObjectStore because TypeScript
         const records =
             this.source instanceof FDBObjectStore
@@ -169,11 +168,15 @@ class FDBCursor {
         let foundRecord: Record | undefined
         const isNext = this.direction.includes("next")
         const isUnique = this.direction.includes("unique")
-        let range
+        let range: FDBKeyRange | undefined
+        const keyIntoRange =
+            key === undefined && (sourceIsObjectStore || isUnique)
+                ? this._previousFetchedKey
+                : key
         try {
             range = makeKeyRange(
                 this._range,
-                isNext ? [key, this._position] : [],
+                isNext ? [keyIntoRange, this._position] : [],
                 isNext ? [] : [key, this._position],
             )
         } catch {
@@ -193,14 +196,29 @@ class FDBCursor {
         ) {
             range.upperOpen = true
         }
+        console.log({
+            range: !!range,
+            isNext: !!isNext,
+            keyEqUndefined: key === undefined,
+            primaryKeyEqUndefined: primaryKey === undefined,
+            prevFetchedKeyEqLower:
+                this._previousFetchedKey === this._range?.lower,
+        })
         if (
             (isUnique || sourceIsObjectStore) &&
             range &&
             isNext &&
             key === undefined &&
             primaryKey === undefined &&
-            this._range?.lower !== range?.lower
+            this._previousFetchedKey !== undefined
         ) {
+            if (
+                range.lower &&
+                range.upper &&
+                cmp(range.lower, range.upper) === 0
+            ) {
+                return null
+            }
             range.lowerOpen = true
         }
         if (
@@ -209,8 +227,15 @@ class FDBCursor {
             !isNext &&
             key === undefined &&
             primaryKey === undefined &&
-            this._range?.upper !== range?.upper
+            this._previousFetchedKey !== undefined
         ) {
+            if (
+                range.lower &&
+                range.upper &&
+                cmp(range.lower, range.upper) === 0
+            ) {
+                return null
+            }
             range.upperOpen = true
         }
 
@@ -250,6 +275,18 @@ class FDBCursor {
             //     console.log("stuck in loop")
             //     throw new Error("Stuck in loop!")
             // }
+            let prevPrimaryKey: IDBValidKey | undefined = undefined
+            if (!sourceIsObjectStore) {
+                if (fetchedNextPromise) {
+                    prevPrimaryKey = fetchedNextPromise.primaryKey
+                } else if (
+                    tmpRange &&
+                    this._previousFetchedKey &&
+                    tmpRange.includes(this._previousFetchedKey)
+                ) {
+                    prevPrimaryKey = this._previousFetchedPrimaryKey
+                }
+            }
             fetchedNextPromise = await call<GetNextFromCursorMethod>(
                 port,
                 "executeReadMethod",
@@ -259,18 +296,11 @@ class FDBCursor {
                     call: {
                         method: "getNextFromCursor",
                         params: {
+                            justKeys: !(this instanceof FDBCursorWithValue),
                             range: serializeQuery(tmpRange),
                             direction: this.direction,
                             currPrimaryKey: primaryKey,
-                            prevPrimaryKey: !sourceIsObjectStore
-                                ? fetchedNextPromise
-                                    ? fetchedNextPromise.primaryKey
-                                    : range &&
-                                      this._previousFetchedKey &&
-                                      range.includes(this._previousFetchedKey)
-                                    ? this._previousFetchedPrimaryKey
-                                    : undefined
-                                : undefined,
+                            prevPrimaryKey: prevPrimaryKey,
                             indexName: sourceIsObjectStore
                                 ? undefined
                                 : this.source.name,
@@ -388,7 +418,7 @@ class FDBCursor {
             (sourceIsObjectStore
                 ? { key: fetchedNext.key, value: fetchedNext.value }
                 : { key: fetchedNext.key, value: fetchedNext.primaryKey })
-
+        console.log({ foundRecord, fetchedNext })
         if (foundRecord && fetchedNext) {
             const cmpResult = cmp(
                 sourceIsObjectStore
