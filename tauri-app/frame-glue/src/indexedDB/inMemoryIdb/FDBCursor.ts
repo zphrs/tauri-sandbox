@@ -11,7 +11,6 @@ import { serializeQuery } from "../methods/SerializedRange"
 
 import { cmp } from "./lib/cmp"
 import {
-    DataCloneError,
     DataError,
     InvalidAccessError,
     InvalidStateError,
@@ -556,7 +555,7 @@ class FDBCursor {
         try {
             clone = structuredClone(value)
         } catch {
-            throw new DataCloneError()
+            throw new DataError()
         }
 
         if (effectiveObjectStore.keyPath !== null) {

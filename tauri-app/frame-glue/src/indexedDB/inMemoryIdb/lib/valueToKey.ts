@@ -49,16 +49,25 @@ const valueToKey = (input: unknown, seen?: Set<object>): Key | Key[] => {
             arrayBuffer = input
             length = input.byteLength
         } else {
-            arrayBuffer = (input).buffer
-            offset = (input).byteOffset
-            length = input.byteLength
+            // input is ArrayBufferView
+            const view = input as ArrayBufferView
+            arrayBuffer = view.buffer
+            offset = view.byteOffset
+            length = view.byteLength
         }
 
         if ("detached" in arrayBuffer && arrayBuffer.detached) {
             return new ArrayBuffer(0)
         }
 
-        return arrayBuffer.slice(offset, offset + length)
+        const sliced = arrayBuffer.slice(offset, offset + length)
+        // Convert SharedArrayBuffer to ArrayBuffer for IDBValidKey compatibility
+        if (sliced instanceof SharedArrayBuffer) {
+            return new ArrayBuffer(
+                sliced.byteLength,
+            ).constructor.prototype.slice.call(sliced)
+        }
+        return sliced
     } else if (Array.isArray(input)) {
         if (seen === undefined) {
             seen = new Set()

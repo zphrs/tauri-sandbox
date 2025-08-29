@@ -5,6 +5,10 @@ const awaitingPort: Record<string, ((port: MessagePort) => void)[]> = {}
 type SetupPortNotif = Notification<"setupPort", { name: string }>
 async function receivePorts() {
     self.addEventListener("message", (e: MessageEvent<SetupPortNotif>) => {
+        if (e.data.params?.name === undefined) {
+            return
+        }
+
         receivedPorts[e.data.params.name] = e.ports[0]
         for (const res of awaitingPort[e.data.params.name]) {
             res(e.ports[0])
