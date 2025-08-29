@@ -195,14 +195,6 @@ class FDBCursor {
         ) {
             range.upperOpen = true
         }
-        console.log({
-            range: !!range,
-            isNext: !!isNext,
-            keyEqUndefined: key === undefined,
-            primaryKeyEqUndefined: primaryKey === undefined,
-            prevFetchedKeyEqLower:
-                this._previousFetchedKey === this._range?.lower,
-        })
         if (
             (isUnique || sourceIsObjectStore) &&
             range &&
@@ -417,7 +409,7 @@ class FDBCursor {
             (sourceIsObjectStore
                 ? { key: fetchedNext.key, value: fetchedNext.value }
                 : { key: fetchedNext.key, value: fetchedNext.primaryKey })
-        console.log({ foundRecord, fetchedNext })
+        // console.log({ foundRecord, fetchedNext })
         if (foundRecord && fetchedNext) {
             const cmpResult = cmp(
                 sourceIsObjectStore

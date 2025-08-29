@@ -60,14 +60,10 @@ const valueToKey = (input: unknown, seen?: Set<object>): Key | Key[] => {
             return new ArrayBuffer(0)
         }
 
-        const sliced = arrayBuffer.slice(offset, offset + length)
-        // Convert SharedArrayBuffer to ArrayBuffer for IDBValidKey compatibility
-        if (sliced instanceof SharedArrayBuffer) {
-            return new ArrayBuffer(
-                sliced.byteLength,
-            ).constructor.prototype.slice.call(sliced)
-        }
-        return sliced
+        return arrayBuffer.slice(
+            offset,
+            offset + length,
+        ) as unknown as IDBValidKey[]
     } else if (Array.isArray(input)) {
         if (seen === undefined) {
             seen = new Set()

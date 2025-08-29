@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
 import {
-    DataCloneError,
+    DataError,
     InvalidStateError,
     ReadOnlyError,
 } from "../../inMemoryIdb/lib/errors"
@@ -200,7 +200,7 @@ describe("IDBCursor.update() - object store", () => {
 
         expect(() => {
             cursor!.update(record)
-        }).toThrow(DataCloneError)
+        }).toThrow(DataError)
     })
 
     test("No argument", async ({ task }) => {

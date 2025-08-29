@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
-import { AbortError, InvalidStateError } from "../../inMemoryIdb/lib/errors"
+import { InvalidStateError } from "../../inMemoryIdb/lib/errors"
 
 // Port of w3c test: idbcursor_continue_index.any.js
 // Tests IDBCursor.continue() method on indexes

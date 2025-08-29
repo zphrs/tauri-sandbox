@@ -57,10 +57,11 @@ const extractKey = (
         if (
             object === undefined ||
             object === null ||
-            !Object.hasOwn(object, identifier)
+            (object as { [key: string]: unknown })[identifier] === undefined
         ) {
             return { type: "notFound" }
         }
+
 
         object = (object as { [key: string]: unknown })[identifier]
     }

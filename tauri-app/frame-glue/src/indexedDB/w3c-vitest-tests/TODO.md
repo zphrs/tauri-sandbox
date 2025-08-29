@@ -2,10 +2,10 @@ The following test files are found in src/indexeddb/w3c-tests:
 
 -   [x] abort-in-initial-upgradeneeded.any.js
 
--   [ ] idbobjectstore-index-finished.any.js
--   [ ] idbobjectstore-query-exception-order.any.js
--   [/] idbobjectstore-rename-abort.any.js
--   [/] idbobjectstore-rename-errors.any.js
+-   [x] idbobjectstore-index-finished.any.js
+-   [x] idbobjectstore-query-exception-order.any.js
+-   [x] idbobjectstore-rename-abort.any.js
+-   [x] idbobjectstore-rename-errors.any.js
 -   [x] idbobjectstore-rename-store.any.js
 -   [x] idbobjectstore-request-source.any.js
 -   [x] idbobjectstore-transaction-SameObject.any.js] bindings-inject-keys-bypass.any.js
@@ -147,22 +147,22 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] idbtransaction-oncomplete.any.js
 -   [x] idbtransaction.any.js
 -   [x] idbtransaction_abort.any.js
--   [/] idbtransaction_objectStoreNames.any.js
--   [ ] idbversionchangeevent.any.js
--   [ ] idlharness.any.js
--   [ ] index_sort_order.any.js
--   [ ] interleaved-cursors-large.any.js
--   [ ] interleaved-cursors-small.any.js
--   [ ] key-conversion-exceptions.any.js
--   [ ] key_invalid.any.js
--   [ ] key_valid.any.js
--   [ ] keygenerator.any.js
--   [ ] keyorder.any.js
--   [ ] keypath-exceptions.any.js
--   [ ] keypath-special-identifiers.any.js
--   [ ] keypath.any.js
--   [ ] keypath_invalid.any.js
--   [ ] keypath_maxsize.any.js
+-   [x] idbtransaction_objectStoreNames.any.js
+-   [x] idbversionchangeevent.any.js
+-   [/] idlharness.any.js
+-   [x] index_sort_order.any.js
+-   [x] interleaved-cursors-large.any.js
+-   [x] interleaved-cursors-small.any.js
+-   [x] key-conversion-exceptions.any.js
+-   [x] key_invalid.any.js
+-   [x] key_valid.any.js
+-   [x] keygenerator.any.js
+-   [x] keyorder.any.js
+-   [x] keypath-exceptions.any.js
+-   [x] keypath-special-identifiers.any.js
+-   [x] keypath.any.js
+-   [x] keypath_invalid.any.js
+-   [x] keypath_maxsize.any.js
 -   [ ] large-requests-abort.any.js
 -   [ ] list_ordering.any.js
 -   [ ] name-scopes.any.js

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
 import { FDBKeyRange as IDBKeyRange } from "../../inMemoryIdb"
 import {
-    DataCloneError,
+    DataError,
     InvalidStateError,
     ReadOnlyError,
 } from "../../inMemoryIdb/lib/errors"
@@ -203,7 +203,7 @@ describe("IDBCursor.update() - index", () => {
 
         expect(() => {
             cursor!.update(record)
-        }).toThrow(DataCloneError)
+        }).toThrow(DataError)
     })
 
     test("No argument", async ({ task }) => {
