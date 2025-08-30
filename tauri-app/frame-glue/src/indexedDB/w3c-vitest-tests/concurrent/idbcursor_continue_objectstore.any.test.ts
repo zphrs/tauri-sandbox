@@ -169,7 +169,7 @@ describe("IDBCursor.continue() - object store", () => {
             { pKey: "primaryKey_0" },
             { pKey: "primaryKey_1" },
         ]
-
+        
         return new Promise<void>((resolve, reject) => {
             createDatabase(task, (database) => {
                 const objStore = createObjectStoreAndPopulate(database, records)

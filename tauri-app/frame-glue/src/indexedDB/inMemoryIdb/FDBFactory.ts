@@ -14,6 +14,7 @@ import ObjectStore from "./lib/ObjectStore"
 import Index from "./lib/Index"
 import type { UpgradeActions } from "../methods/OpenIDBDatabase"
 import type { DeleteDatabaseMethod } from "../methods/deleteDatabase"
+import { requestToPromise } from "../methods/readFromStore"
 
 const waitForOthersClosedDelete = async (
     databases: Map<string, Database>,
@@ -268,6 +269,33 @@ const openDatabase = async (
     }
 }
 
+const fifoDbQueue = new Set<() => Promise<void>>()
+
+let running: (() => Promise<void>) | undefined = undefined
+
+function maybeRunNext() {
+    if (running === undefined) {
+        const next = fifoDbQueue[Symbol.iterator]().next()
+        if (next.done) {
+            return
+        }
+        running = next.value
+
+        queueTask(() => {
+            running!().finally(() => {
+                fifoDbQueue.delete(running!)
+                running = undefined
+                queueTask(maybeRunNext)
+            })
+        })
+    }
+}
+
+function addToQueue(fn: () => Promise<void>) {
+    fifoDbQueue.add(fn)
+    maybeRunNext()
+}
+
 class FDBFactory {
     public _port
     public cmp = cmp
@@ -281,12 +309,15 @@ class FDBFactory {
     public deleteDatabase(name: string) {
         const request = new FDBOpenDBRequest()
         request.source = null
+        const reqPromise = requestToPromise(
+            request as unknown as IDBRequest<unknown>,
+        )
 
-        queueTask(async () => {
+        addToQueue(async () => {
             const db = this._databases.get(name)
             const oldVersion = db !== undefined ? db.version : 0
 
-            await deleteDatabase(
+            deleteDatabase(
                 this._databases,
                 name,
                 request,
@@ -316,6 +347,7 @@ class FDBFactory {
                 },
                 this._port,
             )
+            await reqPromise
         })
 
         return request
@@ -335,7 +367,11 @@ class FDBFactory {
         const request = new FDBOpenDBRequest()
         request.source = null
 
-        queueTask(() => {
+        const reqPromise = requestToPromise(
+            request as unknown as IDBRequest<unknown>,
+        )
+
+        addToQueue(async () => {
             openDatabase(
                 this._databases,
                 name,
@@ -370,6 +406,7 @@ class FDBFactory {
                 },
                 this._port,
             )
+            await reqPromise
         })
 
         return request

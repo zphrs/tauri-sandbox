@@ -1,5 +1,9 @@
-import { test, expect } from "vitest"
-import { createDatabase } from "../resources/createDatabase"
+import { test, expect, onTestFinished } from "vitest"
+import {
+    createDatabase,
+    idb,
+    requestToPromise,
+} from "../resources/createDatabase"
 
 // Port of w3c test: close-in-upgradeneeded.any.js
 // Verifies calling `close()` inside the `onupgradeneeded` handler closes the

@@ -44,23 +44,25 @@ describe("IDBDatabase.createObjectStore()", () => {
         expect(objStore).toBeInstanceOf(FDBObjectStore)
     })
 
-    test("Create 1000 object stores, add one item and delete", async ({
-        task,
-    }) => {
-        const db = await createDatabase(task, (db) => {
-            let store
-            for (let i = 0; i < 1000; i++) {
-                store = db.createObjectStore("object_store_" + i)
-                store.add("test", 1)
-            }
-        })
+    test(
+        "Create 1000 object stores, add one item and delete",
+        { timeout: 2000 },
+        async ({ task }) => {
+            const db = await createDatabase(task, (db) => {
+                let store
+                for (let i = 0; i < 1000; i++) {
+                    store = db.createObjectStore("object_store_" + i)
+                    store.add("test", 1)
+                }
+            })
 
-        // Test that we can retrieve from the last store
-        const tx = db.transaction("object_store_999", "readonly")
-        const store = tx.objectStore("object_store_999")
-        const result = await requestToPromise(store.get(1))
-        expect(result).toBe("test")
-    })
+            // Test that we can retrieve from the last store
+            const tx = db.transaction("object_store_999", "readonly")
+            const store = tx.objectStore("object_store_999")
+            const result = await requestToPromise(store.get(1))
+            expect(result).toBe("test")
+        },
+    )
 
     test("Empty name", async ({ task }) => {
         const db = await createDatabase(task, (db) => {

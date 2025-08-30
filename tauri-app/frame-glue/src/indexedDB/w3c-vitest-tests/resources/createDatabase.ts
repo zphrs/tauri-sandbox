@@ -39,6 +39,9 @@ export async function createDatabase(
 ): Promise<IDBDatabase> {
     const dbName = t.id
     const dbname = dbName || "testdb-" + new Date().getTime() + Math.random()
+    await requestToPromise(
+        idb.deleteDatabase(dbname) as unknown as IDBRequest<unknown>,
+    )
     const req = idb.open(dbname)
     const out = await idbOpenToPromise(req, onUpgradeNeeded)
 

@@ -167,16 +167,16 @@ export type ExecuteReadMethod<R extends Read, Return> = Method<
 
 export function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
     return new Promise((res, rej) => {
-        request.onsuccess = (e) => {
+        const onSuccess = (e: Event) => {
             res((e.target as IDBRequest<T>).result)
-            request.onsuccess = null
-            request.onerror = null
+            request.removeEventListener("success", onSuccess)
         }
-        request.onerror = (e) => {
+        request.addEventListener("success", onSuccess)
+        const onError = (e: Event) => {
             rej((e.target as IDBRequest<T>).error)
-            request.onsuccess = null
-            request.onerror = null
+            request.removeEventListener("error", onError)
         }
+        request.addEventListener("error", onError)
     })
 }
 

@@ -163,16 +163,16 @@ The following test files are found in src/indexeddb/w3c-tests:
 -   [x] keypath.any.js
 -   [x] keypath_invalid.any.js
 -   [x] keypath_maxsize.any.js
--   [ ] large-requests-abort.any.js
--   [ ] list_ordering.any.js
--   [ ] name-scopes.any.js
--   [ ] nested-cloning-basic.any.js
--   [ ] nested-cloning-large-multiple.any.js
--   [ ] nested-cloning-large.any.js
--   [ ] nested-cloning-small.any.js
--   [ ] objectstore_keyorder.any.js
--   [ ] open-request-queue.any.js
--   [ ] parallel-cursors-upgrade.any.js
+-   [x] large-requests-abort.any.js
+-   [x] list_ordering.any.js
+-   [x] name-scopes.any.js
+-   [x] nested-cloning-basic.any.js
+-   [x] nested-cloning-large-multiple.any.js
+-   [x] nested-cloning-large.any.js
+-   [x] nested-cloning-small.any.js
+-   [x] objectstore_keyorder.any.js
+-   [x] open-request-queue.any.js
+-   [x] parallel-cursors-upgrade.any.js
 -   [ ] reading-autoincrement-indexes-cursors.any.js
 -   [ ] reading-autoincrement-indexes.any.js
 -   [ ] reading-autoincrement-store-cursors.any.js
