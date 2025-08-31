@@ -1,10 +1,10 @@
 import { call } from "../../rpcOverPorts"
 import type {
-    ExecuteIDBTransactionMethod,
+    ExecuteTransactionMethod,
     Write,
     WriteLog,
-} from "../methods/executeIDBTransaction"
-import type { UpgradeActions } from "../methods/OpenIDBDatabase"
+    UpgradeActions,
+} from "../methods-scaffolding/types/"
 import type FDBCursor from "./FDBCursor"
 import FDBDatabase from "./FDBDatabase"
 import { callOpenDatabase } from "./FDBFactory"
@@ -330,9 +330,9 @@ class FDBTransaction extends FakeEventTarget {
                         (v) => v.length !== 0,
                     )
                 ) {
-                    await call<ExecuteIDBTransactionMethod>(
+                    await call<ExecuteTransactionMethod>(
                         this.db._rawDatabase._port,
-                        "executeIDBTransactionMethod",
+                        "executeTransaction",
                         this._writeActions,
                     )
                 }

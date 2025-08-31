@@ -1,12 +1,10 @@
 import { describe, expect, test } from "vitest"
 import {
     createDatabase,
-    deleteAllDatabases,
     idb,
     migrateNamedDatabase,
     requestToPromise,
 } from "../resources/createDatabase"
-import type { FDBRequest } from "../../inMemoryIdb"
 
 // Port of w3c test: blob-delete-objectstore-db.any.js
 // Verify that deleting an object store in an upgrade transaction removes it from the

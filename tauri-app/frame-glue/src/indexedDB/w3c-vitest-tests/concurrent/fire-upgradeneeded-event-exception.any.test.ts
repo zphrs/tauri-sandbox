@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 import { idb } from "../resources/createDatabase"
-import type { FDBOpenDBRequest } from "../.."
+import type { IDBOpenDBRequest } from "../.."
 
 // Port of w3c test: fire-upgradeneeded-event-exception.any.js
 // Tests exception handling in upgradeneeded event handlers/listeners
@@ -22,7 +22,7 @@ function isTransactionActive(tx: IDBTransaction, storeName: string): boolean {
 
 // Helper function to create a test that fires an upgradeneeded event exception
 function fireUpgradeneededEventTest(
-    func: (open: FDBOpenDBRequest) => void,
+    func: (open: IDBOpenDBRequest) => void,
     description: string,
 ) {
     return test(description, async () => {

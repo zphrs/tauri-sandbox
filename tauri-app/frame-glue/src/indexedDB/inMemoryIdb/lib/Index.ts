@@ -1,10 +1,9 @@
 import { FDBKeyRange, FDBTransaction } from "../"
 import { call } from "../../../rpcOverPorts"
 import type {
-    ExecuteReadMethod,
     GetAllRecordsFromIndexMethod,
-    Read,
-} from "../../methods/readFromStore"
+    ReadMethods,
+} from "../../methods-scaffolding/types/"
 import { cmp } from "./cmp"
 
 import { ConstraintError } from "./errors"
@@ -107,22 +106,20 @@ class Index {
         return foundValue
     }
 
-    public async _executeReadMethod<
-        Method extends ExecuteReadMethod<Read, unknown>,
-    >(
+    public async _executeReadMethod<Method extends ReadMethods>(
         method: Method["req"]["params"]["call"]["method"],
         params: Method["req"]["params"]["call"]["params"],
     ) {
         const readCall = { method, params } as Method["req"]["params"]["call"]
         return await call<Method>(
             this.rawObjectStore.rawDatabase._port,
-            "executeReadMethod",
+            "executeRead",
             {
                 params: {
                     dbName: this.rawObjectStore.rawDatabase.name,
                     store: this.rawObjectStore.committedName,
                     call: readCall,
-                },
+                } as Method["req"]["params"],
                 transferableObjects: [],
             },
         )
@@ -169,8 +166,6 @@ class Index {
                 return this.convertRecordToIndexRecord(inlineRecord, true)
             })
             .filter((v) => !this.rawObjectStore.records.modified(v.value))
-
-        // console.log({ fetchedRecords })
 
         // mergesort
         const out: Record[] = []

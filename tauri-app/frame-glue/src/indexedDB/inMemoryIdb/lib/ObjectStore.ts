@@ -1,11 +1,9 @@
 import { call } from "../../../rpcOverPorts"
 import type {
-    CountMethod,
-    ExecuteReadMethod,
-    GetAllKeysMethod,
     GetAllRecordsMethod,
-    Read,
-} from "../../methods/readFromStore"
+    GetAllKeysMethod,
+    ReadMethods,
+} from "../../methods-scaffolding/types/"
 import FDBKeyRange from "../FDBKeyRange"
 import { cmp } from "./cmp"
 import Database from "./Database"
@@ -81,19 +79,17 @@ class ObjectStore {
         }
     }
 
-    private async executeReadMethod<
-        Method extends ExecuteReadMethod<Read, unknown>,
-    >(
+    private async executeReadMethod<Method extends ReadMethods>(
         method: Method["req"]["params"]["call"]["method"],
         params: Method["req"]["params"]["call"]["params"],
     ) {
         const readCall = { method, params } as Method["req"]["params"]["call"]
-        return await call<Method>(this.rawDatabase._port, "executeReadMethod", {
+        return await call<Method>(this.rawDatabase._port, "executeRead", {
             params: {
                 dbName: this.rawDatabase.name,
                 store: this.committedName,
                 call: readCall,
-            },
+            } as Method["req"]["params"],
             transferableObjects: [],
         })
     }
@@ -293,18 +289,20 @@ class ObjectStore {
         let recordExists: boolean =
             this.records.get(newRecord.key) !== undefined
         if (!recordExists && !this.records.modified(newRecord.key)) {
-            const ct = await call<CountMethod>(
-                this.rawDatabase._port,
-                "executeReadMethod",
-                {
-                    dbName: this.rawDatabase.name,
-                    store: this.name,
-                    call: {
-                        method: "count",
-                        params: { query: newRecord.key },
+            const ct = (
+                await call<GetAllRecordsMethod>(
+                    this.rawDatabase._port,
+                    "executeRead",
+                    {
+                        dbName: this.rawDatabase.name,
+                        store: this.name,
+                        call: {
+                            method: "getAllRecords",
+                            params: { query: newRecord.key, count: 1 },
+                        },
                     },
-                },
-            )
+                )
+            )[0].length
             recordExists = ct !== 0
         }
         if (recordExists) {

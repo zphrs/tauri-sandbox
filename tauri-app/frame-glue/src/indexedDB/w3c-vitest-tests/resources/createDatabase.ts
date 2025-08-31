@@ -1,7 +1,7 @@
 import { afterAll, onTestFinished } from "vitest"
 import { IDBFactory, IDBOpenDBRequest } from "../../index"
-import { setupIDBMethodHandlersFromPort } from "../../methods"
-import { requestToPromise } from "../../methods/readFromStore"
+import { setupIDBMethodHandlersFromPort } from "../../methods-parent-idb"
+import { requestToPromise } from "../../methods-parent-idb/readFromStore"
 
 export { requestToPromise }
 

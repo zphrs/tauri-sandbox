@@ -1,5 +1,7 @@
-import type { Write } from "../methods/executeIDBTransaction"
-import type { ObjectStoreUpgradeActions } from "../methods/OpenIDBDatabase"
+import type {
+    Write,
+    ObjectStoreUpgradeActions,
+} from "../methods-scaffolding/types/"
 
 import FDBCursor from "./FDBCursor"
 import FDBCursorWithValue from "./FDBCursorWithValue"

@@ -1,5 +1,5 @@
 import { call } from "../../../rpcOverPorts"
-import type { GetIDBDatabaseStoresMethod } from "../../methods/GetIDBDatabaseStores"
+import type { GetDatabaseStoresMethod } from "../../methods-scaffolding/types/"
 import FDBDatabase from "../FDBDatabase"
 import FDBTransaction from "../FDBTransaction"
 import Index from "./Index"
@@ -28,9 +28,9 @@ class Database {
     public async sync() {
         this.rawObjectStores.clear()
         for (const objectStore of (
-            await call<GetIDBDatabaseStoresMethod>(
+            await call<GetDatabaseStoresMethod>(
                 this._port,
-                "getIDBDBStores",
+                "getDatabaseStores",
                 {
                     name: this.name,
                 },

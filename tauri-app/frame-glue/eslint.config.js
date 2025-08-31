@@ -14,5 +14,5 @@ export default defineConfig([
         languageOptions: { globals: globals.browser },
     },
     tseslint.configs.recommended,
-    globalIgnores(["src/indexedDB/w3c-tests", "lib"]),
+    globalIgnores(["src/indexedDB/w3c-tests", "lib", "coverage"]),
 ])

@@ -52,7 +52,7 @@ describe("key_invalid", () => {
                         reject(error)
                     }
                 }
-                request.onerror = (e) => {
+                request.onerror = () => {
                     reject(request.error)
                 }
                 request.onsuccess = () => resolve()

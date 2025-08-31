@@ -53,15 +53,17 @@ export function getId() {
     return idIncrement++
 }
 
+export type HandlerOf<M extends Method<string, unknown, unknown>> = (
+    req: M["req"]["params"],
+) => Promise<
+    | M["res"]["result"]
+    | { result: M["res"]["result"]; transferableObjects: Transferable[] }
+>
+
 export function handleRequests<M extends Method<string, unknown, unknown>>(
     port: MessagePort,
     methodName: M["name"],
-    handler: (
-        req: M["req"]["params"],
-    ) => Promise<
-        | M["res"]["result"]
-        | { result: M["res"]["result"]; transferableObjects: Transferable[] }
-    >,
+    handler: HandlerOf<M>,
 ) {
     const handleMessage = async (e: MessageEvent<M["req"]>) => {
         if (e.data.method !== methodName) {

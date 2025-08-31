@@ -1,5 +1,5 @@
 import { call } from "../../rpcOverPorts"
-import type { CloseDatabaseMethod } from "../methods/closeDatabase"
+import type { CloseDatabaseMethod } from "../methods-parent-idb/closeDatabase"
 import FDBTransaction from "./FDBTransaction"
 import Database from "./lib/Database"
 import {

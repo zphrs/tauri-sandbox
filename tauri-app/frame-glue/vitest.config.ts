@@ -1,8 +1,9 @@
-import { defineConfig } from "vitest/config"
+import { defineConfig, configDefaults } from "vitest/config"
 
 export default defineConfig({
     test: {
         dangerouslyIgnoreUnhandledErrors: true,
+        exclude: [...configDefaults.exclude, "**/w3c-tests/**"],
         projects: [
             {
                 test: {
@@ -39,6 +40,7 @@ export default defineConfig({
             },
         ],
         coverage: {
+            exclude: [...configDefaults.exclude, "**/w3c-tests/**", "lib"],
             provider: "v8",
             reporter: ["text", "json", "html"],
         },

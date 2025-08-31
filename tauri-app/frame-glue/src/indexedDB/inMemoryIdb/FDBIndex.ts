@@ -1,4 +1,3 @@
-import { serializeQuery } from "../methods/SerializedRange"
 import FDBCursor from "./FDBCursor"
 import FDBCursorWithValue from "./FDBCursorWithValue"
 import FDBKeyRange from "./FDBKeyRange"
@@ -257,11 +256,9 @@ class FDBIndex {
         }
 
         return this.objectStore.transaction._execRequestAsync({
-            operation: () => {
-                return this._rawIndex._executeReadMethod("indexCount", {
-                    query: serializeQuery(key),
-                    indexName: this._name,
-                })
+            operation: async () => {
+                return (await this._rawIndex._getAllRecords(key, undefined))
+                    .length
             },
             source: this,
         })

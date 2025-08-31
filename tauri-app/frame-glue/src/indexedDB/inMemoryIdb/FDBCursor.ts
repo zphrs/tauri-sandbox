@@ -6,8 +6,8 @@ import {
     FDBRequest,
 } from "."
 import { call } from "../../rpcOverPorts"
-import type { GetNextFromCursorMethod } from "../methods/readFromStore"
-import { serializeQuery } from "../methods/SerializedRange"
+import type { GetNextFromCursorMethod } from "../methods-scaffolding/types/"
+import { serializeQuery } from "../methods-parent-idb/SerializedRange"
 
 import { cmp } from "./lib/cmp"
 import {
@@ -280,7 +280,7 @@ class FDBCursor {
             }
             fetchedNextPromise = await call<GetNextFromCursorMethod>(
                 port,
-                "executeReadMethod",
+                "executeRead",
                 {
                     dbName: objectStore.rawDatabase.name,
                     store: storeName,

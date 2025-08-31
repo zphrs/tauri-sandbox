@@ -4,5 +4,5 @@ I modified [this library](https://github.com/dumbmatter/fakeIndexedDB) to forwar
 
 ## TODOs
 
-- [ ] handle index queries
-- [ ] handle cursors
+-   [x] handle index queries
+-   [x] handle cursors

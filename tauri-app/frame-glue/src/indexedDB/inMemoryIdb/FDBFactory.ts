@@ -8,13 +8,16 @@ import enforceRange from "./lib/enforceRange"
 import { AbortError, VersionError } from "./lib/errors"
 import FakeEvent from "./lib/FakeEvent"
 import { queueTask } from "./lib/scheduling"
-import type { GetDbInfoMethod } from "../methods/GetDbInfo"
-import type { OpenIDBDatabaseMethod } from "../methods"
+import type {
+    GetDbInfoMethod,
+    OpenDatabaseMethod,
+    UpgradeActions,
+} from "../methods-scaffolding/types/"
+import type {} from "../methods-parent-idb"
 import ObjectStore from "./lib/ObjectStore"
 import Index from "./lib/Index"
-import type { UpgradeActions } from "../methods/OpenIDBDatabase"
-import type { DeleteDatabaseMethod } from "../methods/deleteDatabase"
-import { requestToPromise } from "../methods/readFromStore"
+import type { DeleteDatabaseMethod } from "../methods-parent-idb/deleteDatabase"
+import { requestToPromise } from "../methods-parent-idb/readFromStore"
 
 const waitForOthersClosedDelete = async (
     databases: Map<string, Database>,
@@ -166,7 +169,6 @@ const runVersionchangeTransaction = (
             connection._rawDatabase.version = oldVersion
             connection.version = oldVersion
         })
-
         const event = new FDBVersionChangeEvent("upgradeneeded", {
             newVersion: version,
             oldVersion,
@@ -433,7 +435,7 @@ export async function callOpenDatabase(
     upgradeActions: UpgradeActions[],
 ) {
     const db = connection._rawDatabase
-    const res = await call<OpenIDBDatabaseMethod>(db._port, "openDatabase", {
+    const res = await call<OpenDatabaseMethod>(db._port, "openDatabase", {
         name: connection.name,
         version: connection.version,
         doOnUpgrade: upgradeActions,
