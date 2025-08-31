@@ -1,5 +1,5 @@
 import { afterAll, onTestFinished } from "vitest"
-import { FDBFactory, FDBOpenDBRequest } from "../../index"
+import { IDBFactory, IDBOpenDBRequest } from "../../index"
 import { setupIDBMethodHandlersFromPort } from "../../methods"
 import { requestToPromise } from "../../methods/readFromStore"
 
@@ -11,7 +11,7 @@ function setupPort() {
     return child
 }
 
-export const idb = new FDBFactory(setupPort())
+export const idb = new IDBFactory(setupPort())
 
 export async function cleanupDbRefAfterTest(db: IDBDatabase) {
     try {
@@ -50,7 +50,7 @@ export async function createDatabase(
 }
 
 function idbOpenToPromise(
-    req: FDBOpenDBRequest,
+    req: IDBOpenDBRequest,
     onUpgradeNeeded: (db: IDBDatabase, tx: IDBTransaction) => void,
 ) {
     return new Promise<IDBDatabase>((res, rej) => {

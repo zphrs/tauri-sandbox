@@ -29,7 +29,9 @@ describe("abort-in-initial-upgradeneeded", () => {
                         // Set up transaction handlers
                         setupTransactionHandlers(transaction)
 
-                        db.onabort = function () {
+                        db.onabort = function (e) {
+                            e.preventDefault()
+                            e.stopPropagation()
                             resolve()
                         }
 

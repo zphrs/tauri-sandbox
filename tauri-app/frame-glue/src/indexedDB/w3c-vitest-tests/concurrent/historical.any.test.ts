@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest"
 import {
-    FDBRequest,
-    FDBVersionChangeEvent,
-    FDBDatabase,
-    FDBCursor,
-    FDBTransaction,
+    IDBRequest,
+    IDBVersionChangeEvent,
+    IDBDatabase,
+    IDBCursor,
+    IDBTransaction,
 } from "../../index"
 
 // Port of w3c test: historical.any.js
@@ -12,62 +12,62 @@ import {
 describe("historical", () => {
     test('"errorCode" should not be supported on IDBRequest.', () => {
         // Replaced circa December 2011 by 'error'.
-        expect("errorCode" in FDBRequest.prototype).toBe(false)
+        expect("errorCode" in IDBRequest.prototype).toBe(false)
     })
 
     test('"LOADING" should not be supported on IDBRequest.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBRequestReadyState enum).
-        expect("LOADING" in FDBRequest).toBe(false)
+        expect("LOADING" in IDBRequest).toBe(false)
     })
 
     test('"DONE" should not be supported on IDBRequest.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBRequestReadyState enum).
-        expect("DONE" in FDBRequest).toBe(false)
+        expect("DONE" in IDBRequest).toBe(false)
     })
 
     test('"version" should not be supported on IDBVersionChangeEvent.', () => {
         // Replaced circa December 2011 by 'oldVersion'/'newVersion'.
-        expect("version" in FDBVersionChangeEvent.prototype).toBe(false)
+        expect("version" in IDBVersionChangeEvent.prototype).toBe(false)
     })
 
     test('"setVersion" should not be supported on IDBDatabase.', () => {
         // Replaced circa December 2011 by open() with version.
-        expect("setVersion" in FDBDatabase.prototype).toBe(false)
+        expect("setVersion" in IDBDatabase.prototype).toBe(false)
     })
 
     test('"NEXT" should not be supported on IDBCursor.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBCursorDirection enum).
-        expect("NEXT" in FDBCursor).toBe(false)
+        expect("NEXT" in IDBCursor).toBe(false)
     })
 
     test('"NEXT_NO_DUPLICATE" should not be supported on IDBCursor.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBCursorDirection enum).
-        expect("NEXT_NO_DUPLICATE" in FDBCursor).toBe(false)
+        expect("NEXT_NO_DUPLICATE" in IDBCursor).toBe(false)
     })
 
     test('"PREV" should not be supported on IDBCursor.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBCursorDirection enum).
-        expect("PREV" in FDBCursor).toBe(false)
+        expect("PREV" in IDBCursor).toBe(false)
     })
 
     test('"PREV_NO_DUPLICATE" should not be supported on IDBCursor.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBCursorDirection enum).
-        expect("PREV_NO_DUPLICATE" in FDBCursor).toBe(false)
+        expect("PREV_NO_DUPLICATE" in IDBCursor).toBe(false)
     })
 
     test('"READ_ONLY" should not be supported on IDBTransaction.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBTransactionMode enum).
-        expect("READ_ONLY" in FDBTransaction).toBe(false)
+        expect("READ_ONLY" in IDBTransaction).toBe(false)
     })
 
     test('"READ_WRITE" should not be supported on IDBTransaction.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBTransactionMode enum).
-        expect("READ_WRITE" in FDBTransaction).toBe(false)
+        expect("READ_WRITE" in IDBTransaction).toBe(false)
     })
 
     test('"VERSION_CHANGE" should not be supported on IDBTransaction.', () => {
         // Replaced circa May 2012 by a DOMString (later, IDBTransactionMode enum).
-        expect("VERSION_CHANGE" in FDBTransaction).toBe(false)
+        expect("VERSION_CHANGE" in IDBTransaction).toBe(false)
     })
 
     // Gecko-proprietary interfaces.

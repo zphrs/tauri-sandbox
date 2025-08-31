@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest"
 import { createDatabase, requestToPromise } from "../resources/createDatabase"
-import { InvalidStateError } from "../../inMemoryIdb/lib/errors"
+import {
+    InvalidStateError,
+    TransactionInactiveError,
+} from "../../inMemoryIdb/lib/errors"
 
 // Port of w3c test: idbcursor_continue_index.any.js
 // Tests IDBCursor.continue() method on indexes
@@ -252,26 +255,23 @@ describe("IDBCursor.continue() - index", () => {
             { pKey: "primaryKey_0", iKey: "indexKey_0" },
             { pKey: "primaryKey_1", iKey: "indexKey_1" },
         ]
-        try {
-            await createDatabase(task, (database) => {
-                const objStore = createObjectStoreWithIndexAndPopulate(
-                    database,
-                    records,
-                )
-                const rq = objStore.index("index").openCursor()
-                rq.onsuccess = (event) => {
-                    const cursor = (event.target as IDBRequest).result
-                    expect(cursor).toBeInstanceOf(Object) // IDBCursor
-                    ;(event.target as IDBRequest).transaction!.abort()
+        const p = createDatabase(task, (database) => {
+            const objStore = createObjectStoreWithIndexAndPopulate(
+                database,
+                records,
+            )
+            const rq = objStore.index("index").openCursor()
+            rq.onsuccess = (event) => {
+                const cursor = (event.target as IDBRequest).result
+                expect(cursor).toBeInstanceOf(Object) // IDBCursor
+                ;(event.target as IDBRequest).transaction!.abort()
 
-                    expect(() => {
-                        cursor.continue()
-                    }).toThrow() // Should throw TransactionInactiveError
-                }
-            })
-        } catch (e) {
-            expect((e as DOMException).name).toBe("AbortError")
-        }
+                expect(() => {
+                    cursor.continue()
+                }).toThrow(TransactionInactiveError) // Should throw TransactionInactiveError
+            }
+        })
+        await expect(p).rejects.toHaveProperty("name", "AbortError")
     })
 
     test("If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError", async ({

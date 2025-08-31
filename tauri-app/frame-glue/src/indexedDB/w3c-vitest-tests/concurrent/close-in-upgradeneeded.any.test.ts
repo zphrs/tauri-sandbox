@@ -1,8 +1,7 @@
-import { test, expect, onTestFinished } from "vitest"
+import { test, expect } from "vitest"
 import {
     createDatabase,
-    idb,
-    requestToPromise,
+
 } from "../resources/createDatabase"
 
 // Port of w3c test: close-in-upgradeneeded.any.js
