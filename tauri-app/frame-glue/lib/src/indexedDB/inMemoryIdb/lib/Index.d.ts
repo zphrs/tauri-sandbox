@@ -17,7 +17,7 @@ declare class Index {
     unique: boolean;
     constructor(rawObjectStore: ObjectStore, name: string, keyPath: KeyPath, multiEntry: boolean, unique: boolean);
     getKey(key: FDBKeyRange | Key): Promise<unknown>;
-    getAllKeys(range: FDBKeyRange, count?: number): Promise<(string | number | ArrayBuffer | Date | ArrayBufferView<ArrayBufferLike> | IDBValidKey[])[]>;
+    getAllKeys(range: FDBKeyRange, count?: number): Promise<(string | number | ArrayBuffer | ArrayBufferView<ArrayBufferLike> | Date | IDBValidKey[])[]>;
     getValue(key: FDBKeyRange | Key): Promise<unknown>;
     _executeReadMethod<Method extends ReadMethods>(method: Method["req"]["params"]["call"]["method"], params: Method["req"]["params"]["call"]["params"]): Promise<Method["res"]["result"]>;
     cleanupAfterCompletedTransaction(): void;

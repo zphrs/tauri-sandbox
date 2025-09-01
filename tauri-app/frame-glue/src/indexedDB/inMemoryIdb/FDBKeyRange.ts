@@ -1,3 +1,5 @@
+// changed by @zphrs
+
 import { cmp } from "./lib/cmp"
 import { DataError } from "./lib/errors"
 import type { Key } from "./lib/types"

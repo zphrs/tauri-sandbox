@@ -8,7 +8,418 @@ var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
-var _oldName, _oldName2, _Index_instances, committedName_get;
+var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
+var _res, _customRespondWith, _FetchEvent_instances, respondWith_fn, _oldName, _oldName2, _Index_instances, committedName_get;
+function domReplacement() {
+  window.addEventListener("message", (ev) => {
+    if (ev.data != "domReplacementInit") return;
+    const port = ev.ports[0];
+    port.onmessage = async (ev2) => {
+      window.document.documentElement.innerHTML = ev2.data;
+      const scripts = document.querySelectorAll("script");
+      for (const node of scripts) {
+        const script = document.createElement("script");
+        for (const attribute of node.attributes) {
+          script.setAttribute(
+            attribute.nodeName,
+            attribute.nodeValue
+          );
+        }
+        script.innerText = node.innerText;
+        node.replaceWith(script);
+      }
+    };
+    port.postMessage("inited");
+  });
+}
+async function sleep(s) {
+  return new Promise((res) => {
+    setTimeout(() => {
+      res();
+    }, s * 1e3);
+  });
+}
+async function domReplacementParentSetup(iframe) {
+  const { port1: port, port2: childPort } = new MessageChannel();
+  const waitTillInited = new Promise((res) => {
+    port.addEventListener("message", () => {
+      res();
+    });
+    port.start();
+  });
+  if (iframe.contentWindow) {
+    iframe.contentWindow.postMessage("domReplacementInit", "*", [childPort]);
+  } else {
+    iframe.addEventListener("load", () => {
+      iframe.contentWindow.postMessage("domReplacementInit", "*", [
+        childPort
+      ]);
+    });
+  }
+  await waitTillInited;
+  return (newDom) => {
+    port.postMessage(newDom);
+  };
+}
+class FetchEvent extends Event {
+  constructor(_type, { request, clientId, resultingClientId, handled }) {
+    super(
+      "fetch"
+      /* maybe should replace with type? */
+    );
+    __privateAdd(this, _FetchEvent_instances);
+    __publicField(this, "clientId");
+    __publicField(this, "resultingClientId");
+    __publicField(this, "request");
+    __publicField(this, "handled");
+    // @ts-expect-error ts(2564)
+    __privateAdd(this, _res);
+    __privateAdd(this, _customRespondWith);
+    this.request = request;
+    this.clientId = clientId ?? globalThis.crypto.randomUUID();
+    this.resultingClientId = resultingClientId;
+    this.handled = handled ?? new Promise((res) => {
+      __privateSet(this, _res, res);
+    });
+  }
+  set respondWith(rw) {
+    __privateSet(this, _customRespondWith, rw);
+  }
+  get respondWith() {
+    const t = this;
+    return function(resp) {
+      if (__privateGet(t, _customRespondWith)) __privateGet(t, _customRespondWith).bind(this, resp)();
+      __privateMethod(t, _FetchEvent_instances, respondWith_fn).bind(this, resp)();
+    };
+  }
+  get preloadResponse() {
+    return new Promise((res) => res(void 0));
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  waitUntil(_p) {
+    console.warn("The waitUntil function in the polyfill is a no-op");
+    return;
+  }
+  [Symbol.toStringTag]() {
+    return "FetchEvent";
+  }
+}
+_res = new WeakMap();
+_customRespondWith = new WeakMap();
+_FetchEvent_instances = new WeakSet();
+respondWith_fn = function(p) {
+  p.then(() => {
+    __privateGet(this, _res).call(this);
+  });
+};
+function stringifiableRequestInit(obj) {
+  const filtered = {};
+  for (const k in obj) {
+    const key = k;
+    if (["boolean", "number", "string"].includes(typeof obj[key]) || obj[key] === null)
+      filtered[key] = obj[key];
+  }
+  return filtered;
+}
+function responseToResponseInit(res) {
+  return {
+    headers: Object.fromEntries(res.headers),
+    status: res.status,
+    statusText: res.statusText
+  };
+}
+function proxiedRequestToFetchEvent(data) {
+  const request = requestFromObject(data.request);
+  return new FetchEvent("fetch", {
+    request,
+    clientId: data.clientId,
+    replacesClientId: data.replacesClientId,
+    resultingClientId: data.resultingClientId
+  });
+}
+async function requestAsObject(request) {
+  const arrayBuffer = await request.arrayBuffer();
+  const { url, ...rest } = stringifiableRequestInit(request);
+  console.log(url);
+  const requestInit = {
+    ...rest,
+    headers: Object.fromEntries(request.headers),
+    body: arrayBuffer
+  };
+  return [url, requestInit];
+}
+function requestFromObject(request) {
+  const [url, requestInit] = request;
+  if (["GET", "HEAD"].includes(requestInit.method ?? "")) {
+    delete requestInit.body;
+  }
+  return new Request(new URL(url), requestInit);
+}
+async function sendProxiedResponse(port, id, res) {
+  const arrBuf = await res.arrayBuffer();
+  port.postMessage(
+    {
+      result: {
+        arrBuf,
+        responseInit: responseToResponseInit(res)
+      },
+      id
+    },
+    [arrBuf]
+  );
+}
+async function receiveProxiedResponse(port, id) {
+  const controller = new AbortController();
+  return new Promise((res) => {
+    port.addEventListener(
+      "message",
+      (msgEvent) => {
+        const { id: resId } = msgEvent.data;
+        if (resId != id) return;
+        controller.abort();
+        const out = new Response(
+          msgEvent.data.result.arrBuf,
+          msgEvent.data.result.responseInit
+        );
+        res(out);
+      },
+      { signal: controller.signal }
+    );
+    port.start();
+  });
+}
+async function proxyFetchEvent(port, event) {
+  console.log("Proxying ", event);
+  const id = globalThis.crypto.randomUUID();
+  const reqAsObj = await requestAsObject(event.request);
+  port.postMessage(
+    {
+      params: {
+        request: reqAsObj,
+        clientId: event.clientId,
+        resultingClientId: event.resultingClientId
+      },
+      id
+    },
+    reqAsObj[1].body ? [reqAsObj[1].body] : []
+  );
+  return receiveProxiedResponse(port, id);
+}
+function sendInitEvent(port) {
+  port.postMessage({
+    id: "init"
+  });
+}
+async function handleProxiedFetchEvent(port, onfetch) {
+  const controller = new AbortController();
+  await new Promise((res) => {
+    port.addEventListener(
+      "message",
+      (ev) => {
+        if (ev.data.id == "init") {
+          res();
+          return;
+        }
+        const fetchEvent = proxiedRequestToFetchEvent(ev.data.params);
+        fetchEvent.respondWith = async (r) => {
+          sendProxiedResponse(port, ev.data.id, await r);
+        };
+        onfetch(fetchEvent);
+      },
+      { signal: controller.signal }
+    );
+    port.start();
+  });
+  return controller.abort.bind(controller);
+}
+async function overrideLocalStorage(docId) {
+  window.localStorage.clear();
+  const {
+    port,
+    initialStore
+  } = await new Promise((res) => {
+    window.addEventListener("message", (ev) => {
+      if (ev.data != "localStorageInit") return;
+      const port2 = ev.ports[0];
+      port2.addEventListener("message", (event) => {
+        const msgData = event.data;
+        switch (msgData.call) {
+          case "storageEvent":
+            initialStore[msgData.key] = msgData.newValue;
+            window.dispatchEvent(
+              new StorageEvent("storage", {
+                ...msgData,
+                url: `${origin}/${docId}`
+                //   storageArea: ls,
+              })
+            );
+            break;
+          case "init":
+            res({ port: port2, initialStore: msgData.initialStore });
+        }
+      });
+      port2.start();
+    });
+  });
+  const ls = new Proxy(initialStore, {
+    get(target, symbol) {
+      if (symbol in target) {
+        return target[symbol.toString()];
+      }
+      switch (symbol.toString()) {
+        case "setItem":
+          return (key, value) => {
+            target[key] = value;
+            port.postMessage({
+              call: "setItem",
+              key,
+              value
+            });
+          };
+        case "getItem":
+          return (key) => {
+            return target[key];
+          };
+        case "removeItem":
+          return (key) => {
+            delete target[key];
+            port.postMessage({
+              call: "removeItem",
+              key
+            });
+          };
+        case "key":
+          return (n) => {
+            const keys = Object.keys(target);
+            if (n >= keys.length) {
+              return null;
+            }
+            return keys[n];
+          };
+        case "length":
+          return Object.keys(target).length;
+      }
+    },
+    set(target, symbol, newValue) {
+      target[symbol.toString()] = newValue;
+      if (!["setItem", "getItem", "removeItem", "key", "length"].includes(
+        symbol.toString()
+      )) {
+        port.postMessage({
+          call: "setItem",
+          key: symbol.toString(),
+          value: newValue
+        });
+      }
+      return true;
+    },
+    deleteProperty(target, key) {
+      const out = Reflect.deleteProperty(target, key);
+      window.parent.postMessage(
+        {
+          call: "removeItem",
+          key
+        },
+        "*"
+      );
+      return out;
+    }
+  });
+  Object.defineProperty(window, "localStorage", {
+    value: ls,
+    writable: true
+  });
+  port.postMessage({
+    call: "initialized"
+  });
+}
+async function localStorageParentSetup(docId, iframe) {
+  const { port1: port, port2: childPort } = new MessageChannel();
+  if (iframe.contentWindow) {
+    iframe.contentWindow.postMessage("localStorageInit", "*", [childPort]);
+  } else {
+    iframe.addEventListener("load", () => {
+      var _a;
+      (_a = iframe.contentWindow) == null ? void 0 : _a.postMessage("localStorageInit", "*", [
+        childPort
+      ]);
+    });
+  }
+  const [initialStore, db] = await new Promise((res2, rej) => {
+    const initialLocalStorage = {};
+    const DBOpenRequest = window.indexedDB.open(docId);
+    DBOpenRequest.addEventListener("success", () => {
+      const db2 = DBOpenRequest.result;
+      const objStore = db2.transaction(docId).objectStore(docId);
+      objStore.openCursor().onsuccess = function() {
+        const cursor = this.result;
+        if (!cursor) {
+          res2([initialLocalStorage, db2]);
+          return;
+        }
+        initialLocalStorage[cursor.key.toString()] = cursor.value;
+        cursor.continue();
+      };
+    });
+    DBOpenRequest.addEventListener("upgradeneeded", () => {
+      const db2 = DBOpenRequest.result;
+      db2.createObjectStore(docId);
+    });
+    DBOpenRequest.addEventListener("blocked", () => {
+      rej("Open request was blocked");
+    });
+    DBOpenRequest.addEventListener("error", () => {
+      rej(DBOpenRequest.error);
+    });
+  });
+  let res;
+  const childInitialized = new Promise((r) => {
+    res = r;
+  });
+  port.onmessage = async (event) => {
+    const objStore = db.transaction(docId, "readwrite").objectStore(docId);
+    switch (event.data.call) {
+      case "setItem":
+        localStorage.setItem(
+          `localStorage:${docId}:${encodeURIComponent(event.data.key)}`,
+          event.data.value
+        );
+        objStore.put(event.data.value, event.data.key);
+        break;
+      case "removeItem":
+        localStorage.removeItem(
+          `localStorage:${docId}:${encodeURIComponent(event.data.key)}`
+        );
+        objStore.delete(event.data.key);
+        break;
+      case "initialized":
+        res();
+    }
+  };
+  port.postMessage({ call: "init", initialStore });
+  console.log("Posted init message");
+  window.addEventListener("storage", (event) => {
+    if (event.key == null) {
+      port.postMessage({
+        key: null,
+        oldValue: event.oldValue,
+        newValue: event.newValue
+      });
+      return;
+    }
+    const [ls, dId, encodedKey] = event.key.split(":");
+    if (ls != "localStorage") return;
+    if (dId != docId) return;
+    const key = decodeURIComponent(encodedKey);
+    port.postMessage({
+      call: "storageEvent",
+      key,
+      oldValue: event.oldValue,
+      newValue: event.newValue
+    });
+  });
+  await childInitialized;
+}
 function responseFromResult(result, { id }) {
   return {
     result,
@@ -2590,7 +3001,7 @@ class FDBIndex {
     return "[object IDBIndex]";
   }
 }
-class Event {
+let Event$1 = class Event2 {
   constructor(type, eventInitDict = {}) {
     __publicField(this, "eventPath", []);
     __publicField(this, "type");
@@ -2628,7 +3039,7 @@ class Event {
     this.propagationStopped = true;
     this.immediatePropagationStopped = true;
   }
-}
+};
 const stopped = (event, listener) => {
   return event.immediatePropagationStopped || event.eventPhase === event.CAPTURING_PHASE && listener.capture === false || event.eventPhase === event.BUBBLING_PHASE && listener.capture === true;
 };
@@ -2787,7 +3198,7 @@ class FDBOpenDBRequest extends FDBRequest {
     return "[object IDBOpenDBRequest]";
   }
 }
-class FDBVersionChangeEvent extends Event {
+class FDBVersionChangeEvent extends Event$1 {
   constructor(type, parameters = {}) {
     super(type);
     __publicField(this, "newVersion");
@@ -3365,7 +3776,7 @@ class FDBFactory {
           if (err) {
             request.error = new DOMException(err.message, err.name);
             request.readyState = "done";
-            const event = new Event("error", {
+            const event = new Event$1("error", {
               bubbles: true,
               cancelable: true
             });
@@ -3411,7 +3822,7 @@ class FDBFactory {
             request.result = void 0;
             request.readyState = "done";
             request.error = new DOMException(err.message, err.name);
-            const event = new Event("error", {
+            const event = new Event$1("error", {
               bubbles: true,
               cancelable: true
             });
@@ -3424,7 +3835,7 @@ class FDBFactory {
           }
           request.result = connection;
           request.readyState = "done";
-          const event2 = new Event("success");
+          const event2 = new Event$1("success");
           event2.eventPath = [];
           request.dispatchEvent(event2);
         },
@@ -3532,7 +3943,7 @@ class FDBTransaction extends FakeEventTarget {
         if (request.source) {
           request.result = void 0;
           request.error = new AbortError();
-          const event = new Event("error", {
+          const event = new Event$1("error", {
             bubbles: true,
             cancelable: true
           });
@@ -3545,7 +3956,7 @@ class FDBTransaction extends FakeEventTarget {
     this._writeActions = void 0;
     queueTask(() => {
       this._state = "aborting";
-      const event = new Event("abort", {
+      const event = new Event$1("abort", {
         bubbles: true,
         cancelable: false
       });
@@ -3654,7 +4065,7 @@ class FDBTransaction extends FakeEventTarget {
           if (this._state === "inactive") {
             this._state = "active";
           }
-          event = new Event("success", {
+          event = new Event$1("success", {
             bubbles: false,
             cancelable: false
           });
@@ -3666,7 +4077,7 @@ class FDBTransaction extends FakeEventTarget {
           if (this._state === "inactive") {
             this._state = "active";
           }
-          event = new Event("error", {
+          event = new Event$1("error", {
             bubbles: true,
             cancelable: true
           });
@@ -3719,7 +4130,7 @@ class FDBTransaction extends FakeEventTarget {
             this._writeActions
           );
         }
-        const event = new Event("complete");
+        const event = new Event$1("complete");
         this.dispatchEvent(event);
       }
     }
@@ -4067,11 +4478,62 @@ const handlers = {
   executeRead: executeReadHandler,
   executeTransaction: executeTransactionHandler
 };
+async function deleteAllDatabases() {
+  const databases2 = await indexedDB.databases();
+  for (const dbInfo of databases2) {
+    if (dbInfo.name) {
+      await requestToPromise(
+        indexedDB.deleteDatabase(dbInfo.name)
+      );
+    }
+  }
+}
 async function overrideIndexedDB() {
+  const deletePromise = deleteAllDatabases();
   const port = await getMessagePort("indexedDB");
+  await deletePromise;
   const idb = new FDBFactory(port);
   window.indexedDB = idb;
   globalThis.indexedDB = idb;
+}
+function overrideCookie() {
+  clearCookies();
+  Object.defineProperty(document, "cookie", {
+    set() {
+      console.warn("Setting cookies is a no-op in sandboxed mode");
+    },
+    get() {
+      return "";
+    }
+  });
+}
+function expireAllCookies(name, paths) {
+  const expires = (/* @__PURE__ */ new Date(0)).toUTCString();
+  document.cookie = name + "=; expires=" + expires;
+  for (let i = 0, l = paths.length; i < l; i++) {
+    document.cookie = name + "=; path=" + paths[i] + "; expires=" + expires;
+  }
+}
+function expireActiveCookies(name) {
+  const pathname = location.pathname.replace(/\/$/, ""), segments = pathname.split("/"), paths = [];
+  for (let i = 0, l = segments.length; i < l; i++) {
+    const path = segments.slice(0, i + 1).join("/");
+    paths.push(path);
+    paths.push(path + "/");
+  }
+  expireAllCookies(name, paths);
+}
+async function clearCookies() {
+  const cookies = document.cookie.split(";").map((s) => s.trim());
+  for (const cookie of cookies) {
+    const name = cookie.split("=")[0];
+    expireActiveCookies(name);
+  }
+  if (document.cookie.length != 0) {
+    throw new Error(
+      "not all cookies were cleared! Cookie: " + document.cookie
+    );
+  }
 }
 export {
   FDBCursor as IDBCursor,
@@ -4085,7 +4547,17 @@ export {
   FDBRequest as IDBRequest,
   FDBTransaction as IDBTransaction,
   FDBVersionChangeEvent as IDBVersionChangeEvent,
+  clearCookies,
+  domReplacement,
+  domReplacementParentSetup,
+  handleProxiedFetchEvent,
   handlers,
   setupIndexedDBMethodHandlers as indexedDBParentSetup,
-  overrideIndexedDB
+  localStorageParentSetup,
+  overrideCookie,
+  overrideIndexedDB,
+  overrideLocalStorage,
+  proxyFetchEvent,
+  sendInitEvent,
+  sleep
 };

@@ -1,3 +1,5 @@
+// changed by @zphrs
+
 import FDBCursor from "./FDBCursor"
 import FDBIndex from "./FDBIndex"
 import FDBObjectStore from "./FDBObjectStore"

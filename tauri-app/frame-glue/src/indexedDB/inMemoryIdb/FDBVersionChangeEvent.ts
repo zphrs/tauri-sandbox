@@ -1,3 +1,5 @@
+// changed by @zphrs
+
 import FakeEvent from "./lib/FakeEvent"
 
 class FDBVersionChangeEvent extends FakeEvent {
