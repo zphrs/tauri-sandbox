@@ -1,5 +1,4 @@
 export function domReplacement() {
-    console.log("HERE")
     window.addEventListener("message", (ev) => {
         if (ev.data != "domReplacementInit") return
         const port = ev.ports[0]
@@ -45,7 +44,6 @@ export async function domReplacementParentSetup(
         iframe.contentWindow.postMessage("domReplacementInit", "*", [childPort])
     } else {
         iframe.addEventListener("load", () => {
-            console.log("Iframe loaded")
             iframe.contentWindow!.postMessage("domReplacementInit", "*", [
                 childPort,
             ])
@@ -54,7 +52,6 @@ export async function domReplacementParentSetup(
     await waitTillInited
 
     return (newDom: string) => {
-        console.log("Posting replacement message")
         port.postMessage(newDom)
     }
 }

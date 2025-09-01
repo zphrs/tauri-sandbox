@@ -1,0 +1,31 @@
+import { FDBKeyRange, FDBTransaction } from '../';
+import { ReadMethods } from '../../methods-scaffolding/types/';
+import { default as ObjectStore } from './ObjectStore';
+import { default as RecordStore } from './RecordStore';
+import { Key, KeyPath, Record } from './types';
+declare class Index {
+    #private;
+    deleted: boolean;
+    initialized: boolean;
+    readonly rawObjectStore: ObjectStore;
+    readonly records: RecordStore;
+    _name: string;
+    get name(): string;
+    set name(v: string);
+    readonly keyPath: KeyPath;
+    multiEntry: boolean;
+    unique: boolean;
+    constructor(rawObjectStore: ObjectStore, name: string, keyPath: KeyPath, multiEntry: boolean, unique: boolean);
+    getKey(key: FDBKeyRange | Key): Promise<unknown>;
+    getAllKeys(range: FDBKeyRange, count?: number): Promise<(string | number | ArrayBuffer | Date | ArrayBufferView<ArrayBufferLike> | IDBValidKey[])[]>;
+    getValue(key: FDBKeyRange | Key): Promise<unknown>;
+    _executeReadMethod<Method extends ReadMethods>(method: Method["req"]["params"]["call"]["method"], params: Method["req"]["params"]["call"]["params"]): Promise<Method["res"]["result"]>;
+    cleanupAfterCompletedTransaction(): void;
+    _getAllRecords(range: FDBKeyRange | undefined, count: number | undefined): Promise<Record[]>;
+    getAllValues(range: FDBKeyRange, count?: number): Promise<unknown[]>;
+    private convertRecordToIndexRecord;
+    storeRecord(newRecord: Record): void;
+    initialize(transaction: FDBTransaction): void;
+    count(range?: FDBKeyRange): number;
+}
+export default Index;

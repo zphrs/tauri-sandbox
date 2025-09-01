@@ -1,6 +1,6 @@
 export {
-    setupIndexedDBMethodHandlers as setupIDBMethodHandlers,
-    setupIndexedDBMethodHandlersFromPort as setupIDBMethodHandlersFromPort,
+    setupIndexedDBMethodHandlers,
+    setupIndexedDBMethodHandlersFromPort,
 } from "./setupIDBMethodHandlers"
 
 export function todo(): never {

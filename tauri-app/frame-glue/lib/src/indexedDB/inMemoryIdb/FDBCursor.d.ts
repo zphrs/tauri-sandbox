@@ -1,0 +1,35 @@
+import { FDBRequest } from '.';
+import { CursorRange, CursorSource, FDBCursorDirection, Key, Value } from './lib/types';
+export declare function getValueIterator(): Promise<void>;
+declare class FDBCursor {
+    _request: FDBRequest | undefined;
+    private _gotValue;
+    private _range;
+    private _position;
+    private _objectStorePosition;
+    private _source;
+    private _direction;
+    private _key;
+    private _primaryKey;
+    private _previousFetchedPrimaryKey;
+    private _previousFetchedKey;
+    constructor(source: CursorSource, range: CursorRange, direction?: FDBCursorDirection, request?: FDBRequest);
+    get source(): CursorSource;
+    set source(_val: CursorSource);
+    get request(): FDBRequest | undefined;
+    set request(_val: FDBRequest | undefined);
+    get direction(): FDBCursorDirection;
+    set direction(_val: FDBCursorDirection);
+    get key(): IDBValidKey | undefined;
+    set key(_val: IDBValidKey | undefined);
+    get primaryKey(): IDBValidKey | undefined;
+    set primaryKey(_val: IDBValidKey | undefined);
+    _iterate(key?: Key, primaryKey?: Key): Promise<this | null>;
+    update(value: Value): FDBRequest;
+    advance(count: number): void;
+    continue(key?: Key): void;
+    continuePrimaryKey(key: Key, primaryKey: Key): void;
+    delete(): FDBRequest;
+    toString(): string;
+}
+export default FDBCursor;

@@ -1,0 +1,41 @@
+import { Write, ObjectStoreUpgradeActions } from '../methods-scaffolding/types/';
+import { default as FDBIndex } from './FDBIndex';
+import { default as FDBKeyRange } from './FDBKeyRange';
+import { default as FDBRequest } from './FDBRequest';
+import { default as FDBTransaction } from './FDBTransaction';
+import { default as FakeDOMStringList } from './lib/FakeDOMStringList';
+import { default as ObjectStore } from './lib/ObjectStore';
+import { FDBCursorDirection, Key, KeyPath, Value } from './lib/types';
+declare class FDBObjectStore {
+    _rawObjectStore: ObjectStore;
+    _indexesCache: Map<string, FDBIndex>;
+    _updateWriteLog: (ObjectStoreUpgradeActions | Write)[];
+    keyPath: KeyPath | null;
+    autoIncrement: boolean;
+    transaction: FDBTransaction;
+    indexNames: FakeDOMStringList;
+    private _name;
+    private _nameBeforeTxStart;
+    constructor(transaction: FDBTransaction, rawObjectStore: ObjectStore, updateWriteLog: (ObjectStoreUpgradeActions | Write)[], justCreated: boolean);
+    get name(): string;
+    set name(name: string);
+    put(value: Value, key?: Key): FDBRequest;
+    add(value: Value, key?: Key): FDBRequest;
+    delete(key: Key): FDBRequest;
+    get(key?: FDBKeyRange | Key): FDBRequest;
+    getAll(query?: FDBKeyRange | Key, count?: number): FDBRequest;
+    getKey(key?: FDBKeyRange | Key): FDBRequest;
+    getAllKeys(query?: FDBKeyRange | Key, count?: number): FDBRequest;
+    clear(): FDBRequest;
+    openCursor(range?: FDBKeyRange | Key, direction?: FDBCursorDirection): FDBRequest;
+    openKeyCursor(range?: FDBKeyRange | Key, direction?: FDBCursorDirection): FDBRequest;
+    createIndex(name: string, keyPath: KeyPath, optionalParameters?: {
+        multiEntry?: boolean;
+        unique?: boolean;
+    }): FDBIndex;
+    index(name: string): FDBIndex;
+    deleteIndex(name: string): void;
+    count(key?: Key | FDBKeyRange): FDBRequest;
+    toString(): string;
+}
+export default FDBObjectStore;

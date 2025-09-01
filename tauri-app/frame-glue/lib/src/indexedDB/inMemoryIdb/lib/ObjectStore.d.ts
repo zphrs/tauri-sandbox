@@ -1,0 +1,33 @@
+import { default as FDBKeyRange } from '../FDBKeyRange';
+import { default as Database } from './Database';
+import { default as Index } from './Index';
+import { default as KeyGenerator } from './KeyGenerator';
+import { default as RecordStore } from './RecordStore';
+import { Key, KeyPath, Record, RollbackLog } from './types';
+declare class ObjectStore {
+    #private;
+    deleted: boolean;
+    readonly rawDatabase: Database;
+    readonly records: RecordStore;
+    readonly rawIndexes: Map<string, Index>;
+    get committedName(): string;
+    _name: string;
+    get name(): string;
+    set name(v: string);
+    readonly keyPath: KeyPath | null;
+    readonly autoIncrement: boolean;
+    readonly keyGenerator: KeyGenerator | null;
+    constructor(rawDatabase: Database, name: string, keyPath: KeyPath | null, autoIncrement: boolean);
+    getKey(key: FDBKeyRange | Key): Promise<IDBValidKey>;
+    getAllKeys(range: FDBKeyRange | undefined, count?: number): Promise<IDBValidKey[]>;
+    cleanupAfterCompletedTransaction(): void;
+    private executeReadMethod;
+    getValue(key: FDBKeyRange | Key): Promise<unknown>;
+    _getAllRecords(range: FDBKeyRange | undefined, count: number | undefined, ignoreValues?: boolean): Promise<Record[]>;
+    getAllValues(range: FDBKeyRange, count?: number): Promise<unknown[]>;
+    storeRecord(newRecord: Record, noOverwrite: boolean, rollbackLog?: RollbackLog): Promise<IDBValidKey>;
+    deleteRecord(key: Key, rollbackLog?: RollbackLog): void;
+    clear(rollbackLog: RollbackLog): void;
+    count(range?: FDBKeyRange): Promise<number>;
+}
+export default ObjectStore;

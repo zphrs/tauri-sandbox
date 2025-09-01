@@ -8,7 +8,6 @@ export async function overrideLocalStorage(docId: string) {
             window.addEventListener("message", (ev) => {
                 if (ev.data != "localStorageInit") return
                 const port = ev.ports[0]
-                console.log("port")
                 port.addEventListener("message", (event) => {
                     const msgData = event.data
                     switch (msgData.call) {
@@ -28,9 +27,7 @@ export async function overrideLocalStorage(docId: string) {
                 })
                 port.start()
             })
-            console.log("added msg event listener")
         })
-    console.log("Got ls init")
     const ls = new Proxy(initialStore as Storage, {
         get(target, symbol) {
             if (symbol in target) {

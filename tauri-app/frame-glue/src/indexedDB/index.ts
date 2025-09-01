@@ -1,6 +1,7 @@
 import { getMessagePort } from "../SetupCrossthreadedPorts"
 import { FDBFactory } from "./inMemoryIdb"
-export { setupIDBMethodHandlers } from "./methods-parent-idb"
+export { handlers } from "./methods-parent-idb"
+export { setupIndexedDBMethodHandlers as indexedDBParentSetup } from "./methods-scaffolding/"
 
 export {
     FDBCursor as IDBCursor,

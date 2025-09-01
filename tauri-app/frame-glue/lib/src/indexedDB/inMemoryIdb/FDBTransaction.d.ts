@@ -1,0 +1,33 @@
+import { WriteLog, UpgradeActions } from '../methods-scaffolding/types/';
+import { default as FDBDatabase } from './FDBDatabase';
+import { default as FDBObjectStore } from './FDBObjectStore';
+import { default as FDBRequest } from './FDBRequest';
+import { default as FakeDOMStringList } from './lib/FakeDOMStringList';
+import { default as FakeEventTarget } from './lib/FakeEventTarget';
+import { EventCallback, RequestObj, RollbackLog, TransactionMode } from './lib/types';
+declare class FDBTransaction extends FakeEventTarget {
+    _state: "active" | "inactive" | "committing" | "finished" | "aborting";
+    _started: boolean;
+    _rollbackLog: RollbackLog;
+    _writeActions: WriteLog | undefined;
+    _upgradeActions: UpgradeActions[];
+    _objectStoresCache: Map<string, FDBObjectStore>;
+    objectStoreNames: FakeDOMStringList;
+    mode: TransactionMode;
+    db: FDBDatabase;
+    error: Error | null;
+    onabort: EventCallback | null;
+    oncomplete: EventCallback | null;
+    onerror: EventCallback | null;
+    _scope: Set<string>;
+    private _requests;
+    constructor(storeNames: string[], mode: TransactionMode, db: FDBDatabase);
+    _abort(errName: string | null): void;
+    abort(): void;
+    objectStore(name: string, _justCreated?: boolean): FDBObjectStore;
+    _execRequestAsync(obj: RequestObj): FDBRequest;
+    _start(): Promise<void>;
+    commit(): void;
+    toString(): string;
+}
+export default FDBTransaction;
