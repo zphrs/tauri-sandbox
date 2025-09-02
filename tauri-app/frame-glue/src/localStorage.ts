@@ -1,33 +1,35 @@
+import { getMessagePort, postMessagePort } from "./SetupCrossthreadedPorts"
+
 export async function overrideLocalStorage(docId: string) {
     window.localStorage.clear()
-    const {
-        port,
-        initialStore,
-    }: { port: MessagePort; initialStore: { [key: string]: string } } =
-        await new Promise((res) => {
-            window.addEventListener("message", (ev) => {
-                if (ev.data != "localStorageInit") return
-                const port = ev.ports[0]
-                port.addEventListener("message", (event) => {
-                    const msgData = event.data
-                    switch (msgData.call) {
-                        case "storageEvent":
-                            initialStore[msgData.key] = msgData.newValue
-                            window.dispatchEvent(
-                                new StorageEvent("storage", {
-                                    ...msgData,
-                                    url: `${origin}/${docId}`,
-                                    //   storageArea: ls,
-                                }),
-                            )
-                            break
-                        case "init":
-                            res({ port, initialStore: msgData.initialStore })
-                    }
-                })
-                port.start()
-            })
+    const port = await getMessagePort("localStorage")
+    const initialStore = await new Promise<{ [key: string]: string }>((res) => {
+        port.addEventListener("message", (event) => {
+            const msgData = event.data
+            switch (msgData.call) {
+                case "init":
+                    res(msgData.initialStore)
+            }
         })
+    })
+
+    port.addEventListener("message", (event) => {
+        const msgData = event.data
+        switch (msgData.call) {
+            case "storageEvent":
+                initialStore[msgData.key] = msgData.newValue
+                window.dispatchEvent(
+                    new StorageEvent("storage", {
+                        ...msgData,
+                        url: `${window.origin}/${docId}`,
+                        //   storageArea: ls,
+                    }),
+                )
+        }
+    })
+
+    port.start()
+
     const ls = new Proxy(initialStore as Storage, {
         get(target, symbol) {
             if (symbol in target) {
@@ -103,20 +105,9 @@ export async function overrideLocalStorage(docId: string) {
     })
 }
 
-export async function localStorageParentSetup(
-    docId: string,
-    iframe: HTMLIFrameElement,
-) {
-    const { port1: port, port2: childPort } = new MessageChannel()
-    if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage("localStorageInit", "*", [childPort])
-    } else {
-        iframe.addEventListener("load", () => {
-            iframe.contentWindow?.postMessage("localStorageInit", "*", [
-                childPort,
-            ])
-        })
-    }
+export async function localStorageParentSetup(docId: string, window: Window) {
+    const port = await postMessagePort("localStorage", window)
+
     const [initialStore, db] = await new Promise<
         [
             {
@@ -126,42 +117,47 @@ export async function localStorageParentSetup(
         ]
     >((res, rej) => {
         const initialLocalStorage: { [key: string]: string } = {}
-        const DBOpenRequest = window.indexedDB.open(docId)
-        DBOpenRequest.addEventListener("success", () => {
-            const db = DBOpenRequest.result
-            const objStore = db.transaction(docId).objectStore(docId)
-            objStore.openCursor().onsuccess = function () {
-                const cursor = this.result
-                if (!cursor) {
-                    res([initialLocalStorage, db])
-                    return
-                }
+        const dbOpenRequest = window.indexedDB.open(`localstorage:${docId}`)
+        dbOpenRequest.addEventListener("success", () => {
+            const db = dbOpenRequest.result
+            const tx = db.transaction(docId)
+            const store = tx.objectStore("storage")
+            const objStore = store.getAll()
 
-                initialLocalStorage[cursor.key.toString()] = cursor.value
-                cursor.continue()
+            const objStoreKeys = store.getAllKeys()
+
+            tx.oncomplete = () => {
+                for (const [i, key] of objStoreKeys.result.entries())
+                    initialLocalStorage[key.toString()] = objStore.result[i]
+                res([initialLocalStorage, db])
+            }
+            tx.onabort = () => {
+                rej("transaction aborted: " + tx.error?.toString())
             }
         })
-        DBOpenRequest.addEventListener("upgradeneeded", () => {
-            const db = DBOpenRequest.result
+        dbOpenRequest.addEventListener("upgradeneeded", () => {
+            const db = dbOpenRequest.result
             db.createObjectStore(docId)
         })
-        DBOpenRequest.addEventListener("blocked", () => {
+        dbOpenRequest.addEventListener("blocked", () => {
             rej("Open request was blocked")
         })
-        DBOpenRequest.addEventListener("error", () => {
-            rej(DBOpenRequest.error)
+        dbOpenRequest.addEventListener("error", () => {
+            rej(dbOpenRequest.error)
         })
     })
-    let res: () => void
+    let childInitedRes: () => void
     const childInitialized = new Promise<void>((r) => {
-        res = r
+        childInitedRes = r
     })
     port.onmessage = async (event) => {
         const objStore = db.transaction(docId, "readwrite").objectStore(docId)
         switch (event.data.call) {
             case "setItem":
                 localStorage.setItem(
-                    `localStorage:${docId}:${encodeURIComponent(event.data.key)}`,
+                    `localStorage:${docId}:${encodeURIComponent(
+                        event.data.key,
+                    )}`,
                     event.data.value,
                 )
                 objStore.put(event.data.value, event.data.key)
@@ -169,12 +165,14 @@ export async function localStorageParentSetup(
             case "removeItem":
                 // uri encode key so that we can safely use ":" as a deliminator
                 localStorage.removeItem(
-                    `localStorage:${docId}:${encodeURIComponent(event.data.key)}`,
+                    `localStorage:${docId}:${encodeURIComponent(
+                        event.data.key,
+                    )}`,
                 )
                 objStore.delete(event.data.key)
                 break
             case "initialized":
-                res()
+                childInitedRes()
         }
     }
     port.postMessage({ call: "init", initialStore })

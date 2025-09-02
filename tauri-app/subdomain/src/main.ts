@@ -1,14 +1,16 @@
 import {
   domReplacement,
   overrideCookie,
-  overrideIndexDB,
+  overrideIndexedDB,
   overrideLocalStorage,
 } from "frame-glue"
 
-domReplacement()
-overrideIndexDB()
-overrideCookie()
-overrideLocalStorage(new URL(origin).pathname.slice(1))
+const setupPromises = [
+  domReplacement(),
+  overrideIndexedDB(),
+  overrideCookie(),
+  overrideLocalStorage(new URL(origin).pathname.slice(1)),
+]
 
 function refreshPort() {
   window.parent.postMessage("iframe refresh port", "*")

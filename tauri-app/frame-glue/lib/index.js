@@ -232,194 +232,6 @@ async function handleProxiedFetchEvent(port, onfetch) {
   });
   return controller.abort.bind(controller);
 }
-async function overrideLocalStorage(docId) {
-  window.localStorage.clear();
-  const {
-    port,
-    initialStore
-  } = await new Promise((res) => {
-    window.addEventListener("message", (ev) => {
-      if (ev.data != "localStorageInit") return;
-      const port2 = ev.ports[0];
-      port2.addEventListener("message", (event) => {
-        const msgData = event.data;
-        switch (msgData.call) {
-          case "storageEvent":
-            initialStore[msgData.key] = msgData.newValue;
-            window.dispatchEvent(
-              new StorageEvent("storage", {
-                ...msgData,
-                url: `${origin}/${docId}`
-                //   storageArea: ls,
-              })
-            );
-            break;
-          case "init":
-            res({ port: port2, initialStore: msgData.initialStore });
-        }
-      });
-      port2.start();
-    });
-  });
-  const ls = new Proxy(initialStore, {
-    get(target, symbol) {
-      if (symbol in target) {
-        return target[symbol.toString()];
-      }
-      switch (symbol.toString()) {
-        case "setItem":
-          return (key, value) => {
-            target[key] = value;
-            port.postMessage({
-              call: "setItem",
-              key,
-              value
-            });
-          };
-        case "getItem":
-          return (key) => {
-            return target[key];
-          };
-        case "removeItem":
-          return (key) => {
-            delete target[key];
-            port.postMessage({
-              call: "removeItem",
-              key
-            });
-          };
-        case "key":
-          return (n) => {
-            const keys = Object.keys(target);
-            if (n >= keys.length) {
-              return null;
-            }
-            return keys[n];
-          };
-        case "length":
-          return Object.keys(target).length;
-      }
-    },
-    set(target, symbol, newValue) {
-      target[symbol.toString()] = newValue;
-      if (!["setItem", "getItem", "removeItem", "key", "length"].includes(
-        symbol.toString()
-      )) {
-        port.postMessage({
-          call: "setItem",
-          key: symbol.toString(),
-          value: newValue
-        });
-      }
-      return true;
-    },
-    deleteProperty(target, key) {
-      const out = Reflect.deleteProperty(target, key);
-      window.parent.postMessage(
-        {
-          call: "removeItem",
-          key
-        },
-        "*"
-      );
-      return out;
-    }
-  });
-  Object.defineProperty(window, "localStorage", {
-    value: ls,
-    writable: true
-  });
-  port.postMessage({
-    call: "initialized"
-  });
-}
-async function localStorageParentSetup(docId, iframe) {
-  const { port1: port, port2: childPort } = new MessageChannel();
-  if (iframe.contentWindow) {
-    iframe.contentWindow.postMessage("localStorageInit", "*", [childPort]);
-  } else {
-    iframe.addEventListener("load", () => {
-      var _a;
-      (_a = iframe.contentWindow) == null ? void 0 : _a.postMessage("localStorageInit", "*", [
-        childPort
-      ]);
-    });
-  }
-  const [initialStore, db] = await new Promise((res2, rej) => {
-    const initialLocalStorage = {};
-    const DBOpenRequest = window.indexedDB.open(docId);
-    DBOpenRequest.addEventListener("success", () => {
-      const db2 = DBOpenRequest.result;
-      const objStore = db2.transaction(docId).objectStore(docId);
-      objStore.openCursor().onsuccess = function() {
-        const cursor = this.result;
-        if (!cursor) {
-          res2([initialLocalStorage, db2]);
-          return;
-        }
-        initialLocalStorage[cursor.key.toString()] = cursor.value;
-        cursor.continue();
-      };
-    });
-    DBOpenRequest.addEventListener("upgradeneeded", () => {
-      const db2 = DBOpenRequest.result;
-      db2.createObjectStore(docId);
-    });
-    DBOpenRequest.addEventListener("blocked", () => {
-      rej("Open request was blocked");
-    });
-    DBOpenRequest.addEventListener("error", () => {
-      rej(DBOpenRequest.error);
-    });
-  });
-  let res;
-  const childInitialized = new Promise((r) => {
-    res = r;
-  });
-  port.onmessage = async (event) => {
-    const objStore = db.transaction(docId, "readwrite").objectStore(docId);
-    switch (event.data.call) {
-      case "setItem":
-        localStorage.setItem(
-          `localStorage:${docId}:${encodeURIComponent(event.data.key)}`,
-          event.data.value
-        );
-        objStore.put(event.data.value, event.data.key);
-        break;
-      case "removeItem":
-        localStorage.removeItem(
-          `localStorage:${docId}:${encodeURIComponent(event.data.key)}`
-        );
-        objStore.delete(event.data.key);
-        break;
-      case "initialized":
-        res();
-    }
-  };
-  port.postMessage({ call: "init", initialStore });
-  console.log("Posted init message");
-  window.addEventListener("storage", (event) => {
-    if (event.key == null) {
-      port.postMessage({
-        key: null,
-        oldValue: event.oldValue,
-        newValue: event.newValue
-      });
-      return;
-    }
-    const [ls, dId, encodedKey] = event.key.split(":");
-    if (ls != "localStorage") return;
-    if (dId != docId) return;
-    const key = decodeURIComponent(encodedKey);
-    port.postMessage({
-      call: "storageEvent",
-      key,
-      oldValue: event.oldValue,
-      newValue: event.newValue
-    });
-  });
-  await childInitialized;
-}
 function responseFromResult(result, { id }) {
   return {
     result,
@@ -543,6 +355,189 @@ async function postMessagePort(portName, window2) {
       { signal }
     );
   });
+}
+async function overrideLocalStorage(docId) {
+  window.localStorage.clear();
+  const port = await getMessagePort("localStorage");
+  const initialStore = await new Promise((res) => {
+    port.addEventListener("message", (event) => {
+      const msgData = event.data;
+      switch (msgData.call) {
+        case "init":
+          res(msgData.initialStore);
+      }
+    });
+  });
+  port.addEventListener("message", (event) => {
+    const msgData = event.data;
+    switch (msgData.call) {
+      case "storageEvent":
+        initialStore[msgData.key] = msgData.newValue;
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            ...msgData,
+            url: `${window.origin}/${docId}`
+            //   storageArea: ls,
+          })
+        );
+    }
+  });
+  port.start();
+  const ls = new Proxy(initialStore, {
+    get(target, symbol) {
+      if (symbol in target) {
+        return target[symbol.toString()];
+      }
+      switch (symbol.toString()) {
+        case "setItem":
+          return (key, value) => {
+            target[key] = value;
+            port.postMessage({
+              call: "setItem",
+              key,
+              value
+            });
+          };
+        case "getItem":
+          return (key) => {
+            return target[key];
+          };
+        case "removeItem":
+          return (key) => {
+            delete target[key];
+            port.postMessage({
+              call: "removeItem",
+              key
+            });
+          };
+        case "key":
+          return (n) => {
+            const keys = Object.keys(target);
+            if (n >= keys.length) {
+              return null;
+            }
+            return keys[n];
+          };
+        case "length":
+          return Object.keys(target).length;
+      }
+    },
+    set(target, symbol, newValue) {
+      target[symbol.toString()] = newValue;
+      if (!["setItem", "getItem", "removeItem", "key", "length"].includes(
+        symbol.toString()
+      )) {
+        port.postMessage({
+          call: "setItem",
+          key: symbol.toString(),
+          value: newValue
+        });
+      }
+      return true;
+    },
+    deleteProperty(target, key) {
+      const out = Reflect.deleteProperty(target, key);
+      window.parent.postMessage(
+        {
+          call: "removeItem",
+          key
+        },
+        "*"
+      );
+      return out;
+    }
+  });
+  Object.defineProperty(window, "localStorage", {
+    value: ls,
+    writable: true
+  });
+  port.postMessage({
+    call: "initialized"
+  });
+}
+async function localStorageParentSetup(docId, window2) {
+  const port = await postMessagePort("localStorage", window2);
+  const [initialStore, db] = await new Promise((res, rej) => {
+    const initialLocalStorage = {};
+    const dbOpenRequest = window2.indexedDB.open(`localstorage:${docId}`);
+    dbOpenRequest.addEventListener("success", () => {
+      const db2 = dbOpenRequest.result;
+      const tx = db2.transaction(docId);
+      const store = tx.objectStore("storage");
+      const objStore = store.getAll();
+      const objStoreKeys = store.getAllKeys();
+      tx.oncomplete = () => {
+        for (const [i, key] of objStoreKeys.result.entries())
+          initialLocalStorage[key.toString()] = objStore.result[i];
+        res([initialLocalStorage, db2]);
+      };
+      tx.onabort = () => {
+        var _a;
+        rej("transaction aborted: " + ((_a = tx.error) == null ? void 0 : _a.toString()));
+      };
+    });
+    dbOpenRequest.addEventListener("upgradeneeded", () => {
+      const db2 = dbOpenRequest.result;
+      db2.createObjectStore(docId);
+    });
+    dbOpenRequest.addEventListener("blocked", () => {
+      rej("Open request was blocked");
+    });
+    dbOpenRequest.addEventListener("error", () => {
+      rej(dbOpenRequest.error);
+    });
+  });
+  let childInitedRes;
+  const childInitialized = new Promise((r) => {
+    childInitedRes = r;
+  });
+  port.onmessage = async (event) => {
+    const objStore = db.transaction(docId, "readwrite").objectStore(docId);
+    switch (event.data.call) {
+      case "setItem":
+        localStorage.setItem(
+          `localStorage:${docId}:${encodeURIComponent(
+            event.data.key
+          )}`,
+          event.data.value
+        );
+        objStore.put(event.data.value, event.data.key);
+        break;
+      case "removeItem":
+        localStorage.removeItem(
+          `localStorage:${docId}:${encodeURIComponent(
+            event.data.key
+          )}`
+        );
+        objStore.delete(event.data.key);
+        break;
+      case "initialized":
+        childInitedRes();
+    }
+  };
+  port.postMessage({ call: "init", initialStore });
+  console.log("Posted init message");
+  window2.addEventListener("storage", (event) => {
+    if (event.key == null) {
+      port.postMessage({
+        key: null,
+        oldValue: event.oldValue,
+        newValue: event.newValue
+      });
+      return;
+    }
+    const [ls, dId, encodedKey] = event.key.split(":");
+    if (ls != "localStorage") return;
+    if (dId != docId) return;
+    const key = decodeURIComponent(encodedKey);
+    port.postMessage({
+      call: "storageEvent",
+      key,
+      oldValue: event.oldValue,
+      newValue: event.newValue
+    });
+  });
+  await childInitialized;
 }
 function deserializeQuery$1(range) {
   if (typeof range === "object" && "lower" in range) {
@@ -4495,6 +4490,17 @@ async function overrideIndexedDB() {
   const idb = new FDBFactory(port);
   window.indexedDB = idb;
   globalThis.indexedDB = idb;
+  window.IDBCursor = FDBCursor;
+  window.IDBCursorWithValue = FDBCursorWithValue;
+  window.IDBDatabase = FDBDatabase;
+  window.IDBFactory = FDBFactory;
+  window.IDBIndex = FDBIndex;
+  window.IDBKeyRange = FDBKeyRange;
+  window.IDBObjectStore = FDBObjectStore;
+  window.IDBOpenDBRequest = FDBOpenDBRequest;
+  window.IDBRequest = FDBRequest;
+  window.IDBTransaction = FDBTransaction;
+  window.IDBVersionChangeEvent = FDBVersionChangeEvent;
 }
 function overrideCookie() {
   clearCookies();

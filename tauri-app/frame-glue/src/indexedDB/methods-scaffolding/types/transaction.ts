@@ -2,7 +2,7 @@ import { type Method, type Notification } from "../../../rpcOverPorts"
 import { type SerializedQuery } from "../SerializedRange"
 
 // Types from executeIDBTransaction.ts
-type Add = Notification<
+export type Add = Notification<
     "add",
     {
         value: unknown
@@ -10,7 +10,7 @@ type Add = Notification<
     }
 >
 
-type Clear = Notification<"clear", undefined>
+export type Clear = Notification<"clear", undefined>
 
 type Delete = Notification<
     "delete",

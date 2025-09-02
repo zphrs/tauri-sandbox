@@ -1,8 +1,12 @@
-import { domReplacementParentSetup, localStorageParentSetup } from "frame-glue"
+import {
+  domReplacementParentSetup,
+  handlers,
+  indexedDBParentSetup,
+  localStorageParentSetup,
+} from "frame-glue"
 import { getInitialIframeScript } from "./initialIframe"
 
 import { SUBDOMAIN_WILDCARD_URL } from "./envs"
-
 
 function composeDocument(html: string): Document {
   let doc = document.implementation.createHTMLDocument()
@@ -25,11 +29,7 @@ export async function createSandbox(
   html?: string,
   docId = "test"
 ) {
-
-
   let iframe = document.createElement("iframe")
-  let iframeScript = getInitialIframeScript(docId)
-  let initialDoc = composeDocument(iframeScript.outerHTML)
 
   iframe.src = `${await SUBDOMAIN_WILDCARD_URL}/${encodeURIComponent(docId)}`
 
@@ -65,8 +65,15 @@ export async function createSandbox(
     await swInited
   }
   await setPort(port)
-  replaceDom(initialDoc.documentElement.outerHTML)
-  await localStorageParentSetup(docId, iframe)
+  const contentWindow: Window =
+    iframe.contentWindow ??
+    (await new Promise(res => {
+      iframe.addEventListener("load", () => {
+        res(iframe.contentWindow!)
+      })
+    }))
+  await localStorageParentSetup(docId, contentWindow)
+  await indexedDBParentSetup(contentWindow, docId, handlers)
   html =
     html ??
     `
