@@ -17,12 +17,12 @@ importers:
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.4.0
+      '@workers/v8-value-serializer':
+        specifier: jsr:^0.5.6
+        version: '@jsr/workers__v8-value-serializer@0.5.6'
       frame-glue:
         specifier: link:frame-glue
         version: link:frame-glue
-      typeson:
-        specifier: ^9.0.4
-        version: 9.0.4
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^2
@@ -891,6 +891,12 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.29':
     resolution: {integrity: sha512-uw6guiW/gcAGPDhLmd77/6lW8QLeiV5RUTsAX46Db6oLhGaVj4lhnPwb184s1bkc8kdVg/+h988dro8GRDpmYQ==}
+
+  '@jsr/workers__v8-value-serializer-core@0.1.16':
+    resolution: {integrity: sha512-5YfnrMZTnaTa86IoZWsV8WhB77/bjV8qbnC/k6Ql4qK0zjcyFwNQzGV/qnvh6Kzo0xV3D2iwULNz3uAR65tzdw==, tarball: https://npm.jsr.io/~/11/@jsr/workers__v8-value-serializer-core/0.1.16.tgz}
+
+  '@jsr/workers__v8-value-serializer@0.5.6':
+    resolution: {integrity: sha512-chBvXNDAMEBgbnkVoYqzogZNT07UZqciCT6JpvAAgHBSDm2mbl17F2sOt902ZJrddE1mWHPdlCFify27Mk6ubQ==, tarball: https://npm.jsr.io/~/11/@jsr/workers__v8-value-serializer/0.5.6.tgz}
 
   '@microsoft/api-extractor-model@7.30.6':
     resolution: {integrity: sha512-znmFn69wf/AIrwHya3fxX6uB5etSIn6vg4Q4RB/tb5VDDs1rqREc+AvMC/p19MUN13CZ7+V/8pkYPTj7q8tftg==}
@@ -3097,10 +3103,6 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typeson@9.0.4:
-    resolution: {integrity: sha512-umRYLe37m4fTu0AlgFaqu1C+N+i3LqAehCzbvNx9w7alyN1wpPyS6FbBEsvWD2FppS2yJ9gk0FkFBkZ/wJE13Q==}
-    engines: {node: '>=16.0.0'}
-
   ufo@1.6.1:
     resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
@@ -3633,7 +3635,7 @@ snapshots:
 
   '@babel/parser@7.28.0':
     dependencies:
-      '@babel/types': 7.28.0
+      '@babel/types': 7.28.2
 
   '@babel/plugin-bugfix-firefox-class-in-computed-class-key@7.27.1(@babel/core@7.28.0)':
     dependencies:
@@ -4323,6 +4325,12 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.4
+
+  '@jsr/workers__v8-value-serializer-core@0.1.16': {}
+
+  '@jsr/workers__v8-value-serializer@0.5.6':
+    dependencies:
+      '@jsr/workers__v8-value-serializer-core': 0.1.16
 
   '@microsoft/api-extractor-model@7.30.6(@types/node@22.16.3)':
     dependencies:
@@ -6753,8 +6761,6 @@ snapshots:
   typescript@5.8.2: {}
 
   typescript@5.8.3: {}
-
-  typeson@9.0.4: {}
 
   ufo@1.6.1: {}
 

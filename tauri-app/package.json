@@ -18,8 +18,8 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-log": "~2",
     "@tauri-apps/plugin-opener": "^2",
-    "frame-glue": "link:frame-glue",
-    "typeson": "^9.0.4"
+    "@workers/v8-value-serializer": "jsr:^0.5.6",
+    "frame-glue": "link:frame-glue"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
